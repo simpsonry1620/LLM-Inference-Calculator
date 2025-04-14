@@ -3,6 +3,8 @@ Command-line interface for the LLM Infrastructure Scaling Calculator.
 """
 import argparse
 import json
+import logging
+import os
 from .calculator import LLMScalingCalculator
 
 
@@ -112,6 +114,24 @@ def main():
     """Main entry point for the CLI."""
     args = parse_args()
     
+    # Setup logging
+    log_dir = "logging"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = os.path.join(log_dir, "cli_calculations.log")
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler() # Also print logs to console if needed
+        ]
+    )
+    
+    logging.info("Starting CLI calculation.")
+    logging.info(f"Arguments: {vars(args)}")
+    
     # Convert to raw values
     model_size_params = args.model_size * 1e9
     tokens_to_train = args.tokens_to_train * 1e9
@@ -134,9 +154,15 @@ def main():
     
     # Output results
     if args.format == "json":
-        print(json.dumps(results, indent=2))
+        results_json = json.dumps(results, indent=2)
+        print(results_json)
+        logging.info(f"Calculation results (JSON): {results_json}")
     else:
-        print(format_results_text(results, args))
+        results_text = format_results_text(results, args)
+        print(results_text)
+        logging.info(f"Calculation results (Text):\\n{results_text}")
+
+    logging.info("Finished CLI calculation.")
 
 
 if __name__ == "__main__":

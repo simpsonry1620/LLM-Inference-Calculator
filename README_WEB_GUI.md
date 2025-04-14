@@ -5,9 +5,11 @@ This web interface provides a user-friendly way to estimate computational requir
 ## Features
 
 - Select from predefined model configurations or create a custom model
-- Configure hardware parameters (GPU model, efficiency)
+- Configure hardware parameters (GPU model, efficiency, parallelism strategy)
 - Choose appropriate precision formats (FP16, BF16, FP32) with automatic compatibility filtering
 - Visualize memory requirements, computational requirements, and performance estimates
+- **NEW**: Visualize and compare past calculation results from logs
+- **NEW**: Interactive table for calculation history with sorting and filtering
 - Responsive design that works on desktop and mobile devices
 
 ## Setup
@@ -49,6 +51,13 @@ This web interface provides a user-friendly way to estimate computational requir
    - Precision options automatically adjust based on GPU capabilities
 
 4. Click **Calculate** to generate results
+
+5. **NEW**: Navigate to the **Visualization Page** (via the button on the main page or by going to `/visualize`) to:
+   - View a history of calculations performed through the Web UI and CLI.
+   - Sort and filter the history table by various parameters (Timestamp, Model, GPU, VRAM, etc.).
+   - Select calculations from the table.
+   - Click "Plot Selected" to generate a bar chart comparing VRAM usage and Tokens/sec for the selected runs.
+   - Hover over chart bars to see detailed configuration tooltips.
 
 ## Results
 
@@ -96,14 +105,15 @@ The calculator displays comprehensive results in four categories:
 - `/api/available_models` - GET endpoint for model presets
 - `/api/gpu_configs` - GET endpoint for GPU configurations
 - `/api/model_config/<model_name>` - GET endpoint for specific model configuration
+- `/visualize` - GET endpoint to render the history and visualization page.
 
 ## Potential Enhancements
 
 Future improvements could include:
 
 1. **Visualizations**:
-   - Add charts/graphs to visualize scaling relationships
-   - Compare multiple models side-by-side
+   - Add charts/graphs to visualize scaling relationships (Partially done on `/visualize` page)
+   - Compare multiple models side-by-side (Possible via `/visualize` page)
 
 2. **Model Management**:
    - Save and load custom model configurations
@@ -142,4 +152,14 @@ The web interface communicates with the `AdvancedCalculator` class to perform th
 4. **Results Formatting**:
    - Organizes results into structured categories
    - Applies appropriate scaling and units (GB, TFLOPs, etc.)
-   - Formats time values based on magnitude (ms, s, min, etc.) 
+   - Formats time values based on magnitude (ms, s, min, etc.)
+
+### Logging
+
+- All calculations performed via the Web GUI are logged to `logging/web_app_calculations.log`.
+- This log file includes input parameters and the full JSON results.
+- The `/visualize` page reads this file (and the CLI log file) to populate the history table.
+
+1. **Visualizations**:
+   - Add charts/graphs to visualize scaling relationships (Partially done on `/visualize` page)
+   - Compare multiple models side-by-side (Possible via `/visualize` page) 

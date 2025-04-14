@@ -12,6 +12,8 @@ A Python-based calculator for estimating and planning Large Language Model (LLM)
 - **NEW**: Predefined model architectures and GPU configurations
 - **NEW**: Multi-GPU scaling strategy recommendations (Tensor Parallelism, Pipeline Parallelism)
 - **Web GUI** for interactive exploration and visualization
+- **NEW**: Calculation logging (CLI & Web) to `logging/` directory
+- **NEW**: Web-based visualization page (`/visualize`) to view, sort, filter, and plot calculation history
 
 ## Setup
 
@@ -42,7 +44,11 @@ The easiest way to use the calculator is through the web interface:
 python -m src.calculator_app.web_app
 ```
 
-Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator. See [README_WEB_GUI.md](README_WEB_GUI.md) for more details.
+Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator.
+
+**NEW:** You can also navigate to `http://127.0.0.1:5000/visualize` (or use the button on the main page) to view and compare previous calculation results.
+
+See [README_WEB_GUI.md](README_WEB_GUI.md) for more details.
 
 ### Advanced Calculator (Direct Usage)
 
@@ -217,11 +223,12 @@ See the `examples/` directory and the Web GUI for demonstrations.
     - `web_app.py` - Flask application for the Web GUI interface. Contains API endpoints and potentially helper modules.
     - `calculator.py` - Core calculation logic for FLOPs, VRAM, and scaling.
     - `modules/` (Optional/Potential) - Could contain helper modules for models, GPUs, utils if refactored out of `web_app.py`.
-- `templates/` - HTML templates for web GUI.
-- `static/` - Static assets (CSS, JS) for web GUI.
+- `templates/` - HTML templates for web GUI (`index.html`, `visualize.html`).
+- `static/` - Static assets (CSS, JS) for web GUI (if any added beyond CDNs).
 - `tests/` - Unit and integration tests.
 - `docs/` - Documentation files (`assumptions.md`, `metrics_calculation.md`).
 - `examples/` - Example scripts and notebooks.
+- `logging/` - Directory containing calculation log files (ignored by git).
 - `requirements.txt` - Python package dependencies.
 - `setup.py` - Python package setup script.
 - `.gitignore` - Git ignore file.
@@ -239,4 +246,15 @@ The web interface provides an intuitive way to interact with the calculator and 
 - Detailed breakdown of memory requirements
 - Computational requirements analysis
 - Performance metrics and latency estimates
-- Performance metrics (Throughput, Latency) and scaling recommendations 
+- Performance metrics (Throughput, Latency) and scaling recommendations
+- **NEW**: Calculation history view with sorting, filtering, and plotting capabilities at `/visualize`
+
+## Logging and Visualization (New)
+
+- Calculations run via the CLI (`src.cli`) are logged to `logging/cli_calculations.log`.
+- Calculations run via the Web GUI (`src.calculator_app.web_app`) are logged to `logging/web_app_calculations.log`.
+- These logs contain input parameters and JSON results.
+- The `logging/` directory is included in `.gitignore`.
+- A visualization page is available in the Web GUI at the `/visualize` endpoint.
+- This page displays a sortable and filterable table of logged calculations (from both CLI and Web logs).
+- Users can select entries from the table and plot comparisons of VRAM usage and Tokens/sec. 
