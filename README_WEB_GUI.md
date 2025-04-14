@@ -17,9 +17,9 @@ This web interface provides a user-friendly way to estimate computational requir
    pip install -r requirements.txt
    ```
 
-2. Run the web application:
+2. Run the web application from the project root directory:
    ```
-   python app.py
+   python -m src.calculator_app.web_app
    ```
 
 3. Open your browser and navigate to:
@@ -80,8 +80,8 @@ The calculator displays comprehensive results in four categories:
 ## Implementation Details
 
 ### Backend
-- Flask web server (app.py)
-- Uses the AdvancedCalculator class for computations
+- Flask web server (src/calculator_app/web_app.py)
+- Uses the AdvancedCalculator class from src/calculator_app/calculator.py for computations
 - Dynamically loads model configurations and GPU data when available
 - RESTful API endpoints for calculation and model information
 

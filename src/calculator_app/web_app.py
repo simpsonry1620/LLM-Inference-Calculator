@@ -3,35 +3,28 @@ import sys
 import os
 from flask import Flask, render_template, request, jsonify
 
-# Add the current directory to the path to import AdvancedCalculator
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from advanced_calculator import AdvancedCalculator
+# Removed sys.path modification
+from .calculator import AdvancedCalculator
 
-# Try to import GPU configurations
+# Try to import GPU configurations (simplified)
 try:
+    # Assuming 'src' is in PYTHONPATH due to how the app is run ('python -m ...')
+    # or modules might be moved later.
+    # Corrected import path relative to src/
     from src.advanced_calculator.modules.gpus import (
-        KNOWN_GPUS, 
-        get_gpu_config, 
-        get_gpu_families, 
+        KNOWN_GPUS,
+        get_gpu_config,
+        get_gpu_families,
         list_all_gpus
     )
     HAS_GPU_MODULE = True
 except ImportError:
-    # Alternative path
-    try:
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
-        from advanced_calculator.modules.gpus import (
-            KNOWN_GPUS, 
-            get_gpu_config, 
-            get_gpu_families, 
-            list_all_gpus
-        )
-        HAS_GPU_MODULE = True
-    except ImportError:
-        HAS_GPU_MODULE = False
+    print("Warning: Could not import GPU module from advanced_calculator.modules.gpus. Using fallback.", file=sys.stderr)
+    HAS_GPU_MODULE = False
 
-# Try to import model configurations
+# Try to import model configurations (simplified)
 try:
+    # Corrected import path relative to src/
     from src.advanced_calculator.modules.models import (
         KNOWN_MODELS,
         get_model_config,
@@ -40,20 +33,12 @@ try:
     )
     HAS_MODELS_MODULE = True
 except ImportError:
-    # Alternative path
-    try:
-        # Path should already be added from GPU import
-        from advanced_calculator.modules.models import (
-            KNOWN_MODELS,
-            get_model_config,
-            get_model_families as get_model_families_from_module,
-            list_all_models
-        )
-        HAS_MODELS_MODULE = True
-    except ImportError:
-        HAS_MODELS_MODULE = False
+    print("Warning: Could not import Models module from advanced_calculator.modules.models. Using fallback.", file=sys.stderr)
+    HAS_MODELS_MODULE = False
 
-app = Flask(__name__)
+# Initialize Flask, specifying template and static folder locations relative to this file
+app = Flask(__name__, template_folder='../../templates', static_folder='../../static')
+# Initialize calculator using the corrected import
 calculator = AdvancedCalculator()
 
 # Add helper methods for performance estimation if they don't exist in the calculator
