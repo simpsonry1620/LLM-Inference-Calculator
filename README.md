@@ -35,6 +35,31 @@ A Python-based calculator for estimating and planning Large Language Model (LLM)
 
 ## Usage
 
+### Docker (Recommended for Easy Deployment)
+
+1.  **Build the Docker Image:**
+    Make sure you have Docker installed and running. From the project root directory, run:
+    ```bash
+    docker build -t llm-scaling-calculator .
+    ```
+
+2.  **Run the Docker Container:**
+    ```bash
+    docker run -p 5000:5000 llm-scaling-calculator
+    ```
+    This command maps port 5000 inside the container to port 5000 on your host machine.
+
+3.  **Access the Application:**
+    Open your browser to `http://localhost:5000/`.
+
+4.  **(Optional) Persistent Logs:**
+    The logs are stored inside the container by default. If you want the log files (`logging/`) to persist even after the container is removed, you can mount a volume:
+    ```bash
+    # Make sure a 'logging' directory exists locally first: mkdir logging
+    docker run -p 5000:5000 -v "$(pwd)/logging:/app/logging" llm-scaling-calculator
+    ```
+    *(Note: Replace `$(pwd)` with `%cd%` on Windows Command Prompt if needed, or provide an absolute path.)*
+
 ### Web GUI
 
 The easiest way to use the calculator is through the web interface:
@@ -234,6 +259,8 @@ See the `examples/` directory and the Web GUI for demonstrations.
 - `.gitignore` - Git ignore file.
 - `README.md` - This file.
 - `README_WEB_GUI.md` - Detailed information about the Web GUI.
+- `Dockerfile` - Defines the Docker container build process.
+- `.dockerignore` - Specifies files/directories to exclude from Docker build.
 
 ## Web Interface
 

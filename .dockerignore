@@ -1,0 +1,41 @@
+# Git files
+.git
+.gitignore
+
+# Python virtual environment
+venv/
+.venv/
+ENV/
+env/
+
+# Python cache/compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs (these should be mounted as volumes if persistence is needed)
+logging/
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Dockerfile itself
+Dockerfile
+.dockerignore 
