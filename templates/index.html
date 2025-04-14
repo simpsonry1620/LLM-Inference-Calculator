@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Scaling Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .input-panel {
+            flex: 1;
+            min-width: 300px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .results-panel {
+            flex: 2;
+            min-width: 400px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        /* Input Section Styling */
+        .input-section {
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        
+        .model-params-section {
+            background-color: #e3f2fd;
+            border-left-color: #2196F3;
+        }
+        
+        .inference-params-section {
+            background-color: #e8f5e9;
+            border-left-color: #4CAF50;
+        }
+        
+        .gpu-selection-section {
+            background-color: #fff3e0;
+            border-left-color: #FF9800;
+        }
+        
+        .section-title {
+            margin-top: 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 8px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th, table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .total-row {
+            background-color: #f5f5f5;
+            border-top: 2px solid #333;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #777;
+        }
+        
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #fadbd8;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .model-family-group {
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .model-option {
+            padding-left: 15px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Scaling Calculator</h1>
+    <p>Estimate computational requirements for large language models</p>
+    
+    <div class="container">
+        <div class="input-panel">
+            <h2>Model Configuration</h2>
+            
+            <div class="input-section model-params-section">
+                <h3 class="section-title"><i class="fas fa-brain"></i> Model Parameters</h3>
+                <div class="form-group">
+                    <label for="model-preset">Model Preset:</label>
+                    <select id="model-preset">
+                        <option value="custom">Custom Model</option>
+                        {% for family in model_families %}
+                            <optgroup label="{{ family }}">
+                            {% for model in models %}
+                                {% if model.family == family %}
+                                    {% set hidden_dim = model.hidden_dim if model.hidden_dim is defined else model.hidden_dimensions if model.hidden_dimensions is defined else 768 %}
+                                    {% set ff_dim = model.ff_dim if model.ff_dim is defined else model.feedforward_dimensions if model.feedforward_dimensions is defined else 3072 %}
+                                    {% set seq_len = model.seq_len if model.seq_len is defined else model.default_seq_length if model.default_seq_length is defined else 2048 %}
+                                    <option value="{{ model.name }}" 
+                                            data-hidden-dim="{{ hidden_dim }}" 
+                                            data-ff-dim="{{ ff_dim }}" 
+                                            data-num-layers="{{ model.num_layers }}" 
+                                            data-vocab-size="{{ model.vocab_size|default(50257) }}" 
+                                            data-seq-len="{{ seq_len }}">
+                                        {{ model.name }}
+                                    </option>
+                                {% endif %}
+                            {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="hidden-dim">Hidden Dimensions:</label>
+                    <input type="number" id="hidden-dim" value="768" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ff-dim">Feedforward Dimensions:</label>
+                    <input type="number" id="ff-dim" value="3072" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="num-layers">Number of Layers:</label>
+                    <input type="number" id="num-layers" value="12" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="vocab-size">Vocabulary Size:</label>
+                    <input type="number" id="vocab-size" value="50257" min="1">
+                </div>
+            </div>
+            
+            <div class="input-section inference-params-section">
+                <h3 class="section-title"><i class="fas fa-cogs"></i> Inference Parameters</h3>
+                <div class="form-group">
+                    <label for="seq-len">Sequence Length:</label>
+                    <input type="number" id="seq-len" value="2048" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="batch-size">Batch Size:</label>
+                    <input type="number" id="batch-size" value="1" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="precision">Precision:</label>
+                    <select id="precision">
+                        <option value="fp16">FP16</option>
+                        <option value="bf16">BF16</option>
+                        <option value="fp32">FP32</option>
+                    </select>
+                </div>
+            </div>
+            
+            <h2>Hardware Configuration</h2>
+            
+            <div class="input-section gpu-selection-section">
+                <h3 class="section-title"><i class="fas fa-microchip"></i> GPU Selection</h3>
+                <div class="form-group">
+                    <label for="gpu-model">GPU Model:</label>
+                    <select id="gpu-model">
+                        {% set gpu_families = [] %}
+                        {% for gpu in gpu_configs %}
+                            {% if gpu.family not in gpu_families %}
+                                {% set _ = gpu_families.append(gpu.family) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% for family in gpu_families|sort %}
+                            {% if family %}
+                                <optgroup label="{{ family }}">
+                                    {% for gpu in gpu_configs %}
+                                        {% if gpu.family == family %}
+                                            <option value="{{ gpu.tflops }}" 
+                                                    data-vram="{{ gpu.vram }}" 
+                                                    data-id="{{ gpu.id if gpu.id is defined else '' }}"
+                                                    data-supported-precisions="{{ gpu.supported_precisions|join(',') if gpu.supported_precisions is defined else 'fp32,fp16,bf16' }}">
+                                                {{ gpu.name }} ({{ gpu.tflops }} TFLOPs, {{ gpu.vram }}GB)
+                                            </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <!-- Include any GPUs without family in an "Other" category -->
+                        {% set has_unclassified = false %}
+                        {% for gpu in gpu_configs %}
+                            {% if not gpu.family %}
+                                {% set has_unclassified = true %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if has_unclassified %}
+                            <optgroup label="Other">
+                                {% for gpu in gpu_configs %}
+                                    {% if not gpu.family %}
+                                        <option value="{{ gpu.tflops }}" 
+                                                data-vram="{{ gpu.vram }}" 
+                                                data-id="{{ gpu.id if gpu.id is defined else '' }}"
+                                                data-supported-precisions="{{ gpu.supported_precisions|join(',') if gpu.supported_precisions is defined else 'fp32,fp16,bf16' }}">
+                                            {{ gpu.name }} ({{ gpu.tflops }} TFLOPs, {{ gpu.vram }}GB)
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </optgroup>
+                        {% endif %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="parallelism-strategy">Parallelism Strategy:</label>
+                    <select id="parallelism-strategy">
+                        <option value="none">None</option>
+                        <option value="tensor">Tensor Parallelism</option>
+                        <option value="pipeline">Pipeline Parallelism</option>
+                        <option value="tensor_pipeline">Tensor + Pipeline</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="tensor-parallelism-group" style="display: none;">
+                    <label for="tp-size">Tensor Parallelism Size (TP):</label>
+                    <input type="number" id="tp-size" value="1" min="1">
+                </div>
+                
+                <div class="form-group" id="pipeline-parallelism-group" style="display: none;">
+                    <label for="pp-size">Pipeline Parallelism Size (PP):</label>
+                    <input type="number" id="pp-size" value="1" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="num-gpus">Number of GPUs:</label>
+                    <input type="number" id="num-gpus" value="1" min="1" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="efficiency">GPU Efficiency:</label>
+                    <input type="range" id="efficiency" min="0.1" max="0.8" step="0.05" value="0.3">
+                    <span id="efficiency-value">30%</span>
+                </div>
+            </div>
+            
+            <button id="calculate-btn">Calculate</button>
+        </div>
+        
+        <div class="results-panel">
+            <h2>Results</h2>
+            <div id="loading" class="loading" style="display: none;">Calculating...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <div id="results-container">
+                <div class="card">
+                    <h3>Model Summary</h3>
+                    <div id="model-summary">
+                        <p>Configure the model and click Calculate to see results.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Memory Requirements</h3>
+                    <div id="memory-results">
+                        <!-- Results will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Computational Requirements</h3>
+                    <div id="compute-results">
+                        <!-- Results will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Performance Estimates</h3>
+                    <div id="performance-results">
+                        <!-- Results will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Model Scaling Analysis</h3>
+                    <div id="scaling-results">
+                        <!-- Scaling analysis results will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modelPresetSelect = document.getElementById('model-preset');
+            const hiddenDimInput = document.getElementById('hidden-dim');
+            const ffDimInput = document.getElementById('ff-dim');
+            const numLayersInput = document.getElementById('num-layers');
+            const vocabSizeInput = document.getElementById('vocab-size');
+            const seqLenInput = document.getElementById('seq-len');
+            const batchSizeInput = document.getElementById('batch-size');
+            const precisionSelect = document.getElementById('precision');
+            const gpuModelSelect = document.getElementById('gpu-model');
+            const efficiencyInput = document.getElementById('efficiency');
+            const efficiencyValue = document.getElementById('efficiency-value');
+            const calculateBtn = document.getElementById('calculate-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const modelSummary = document.getElementById('model-summary');
+            const memoryResults = document.getElementById('memory-results');
+            const computeResults = document.getElementById('compute-results');
+            const performanceResults = document.getElementById('performance-results');
+            const loadingElement = document.getElementById('loading');
+            const errorElement = document.getElementById('error');
+            const parallelismStrategySelect = document.getElementById('parallelism-strategy');
+            const tpGroup = document.getElementById('tensor-parallelism-group');
+            const tpSizeInput = document.getElementById('tp-size');
+            const ppGroup = document.getElementById('pipeline-parallelism-group');
+            const ppSizeInput = document.getElementById('pp-size');
+            const numGpusInput = document.getElementById('num-gpus');
+            
+            // Update efficiency value display
+            efficiencyInput.addEventListener('input', function() {
+                efficiencyValue.textContent = `${Math.round(this.value * 100)}%`;
+            });
+            
+            // Handle model preset changes
+            modelPresetSelect.addEventListener('change', function() {
+                const selectedModel = this.value;
+                
+                // If custom, do nothing (keep current values)
+                if (selectedModel === 'custom') {
+                    return;
+                }
+                
+                // Get the selected option
+                const selectedOption = this.options[this.selectedIndex];
+                
+                // Update form fields with data attributes from the selected option
+                hiddenDimInput.value = selectedOption.getAttribute('data-hidden-dim');
+                ffDimInput.value = selectedOption.getAttribute('data-ff-dim');
+                numLayersInput.value = selectedOption.getAttribute('data-num-layers');
+                vocabSizeInput.value = selectedOption.getAttribute('data-vocab-size');
+                seqLenInput.value = selectedOption.getAttribute('data-seq-len');
+            });
+            
+            // Format numbers for display
+            function formatNumber(num) {
+                if (num >= 1e12) {
+                    return (num / 1e12).toFixed(2) + ' T';
+                } else if (num >= 1e9) {
+                    return (num / 1e9).toFixed(2) + ' B';
+                } else if (num >= 1e6) {
+                    return (num / 1e6).toFixed(2) + ' M';
+                } else if (num >= 1e3) {
+                    return (num / 1e3).toFixed(2) + ' K';
+                } else {
+                    return num.toFixed(2);
+                }
+            }
+            
+            // Format times
+            function formatTime(seconds) {
+                if (seconds < 0.001) {
+                    return (seconds * 1000000).toFixed(2) + ' µs';
+                } else if (seconds < 1) {
+                    return (seconds * 1000).toFixed(2) + ' ms';
+                } else if (seconds < 60) {
+                    return seconds.toFixed(2) + ' s';
+                } else if (seconds < 3600) {
+                    return (seconds / 60).toFixed(2) + ' min';
+                } else {
+                    return (seconds / 3600).toFixed(2) + ' hr';
+                }
+            }
+            
+            // Update the JavaScript to filter precision options
+            function updatePrecisionOptions() {
+                const selectedOption = gpuModelSelect.options[gpuModelSelect.selectedIndex];
+                const supportedPrecisions = selectedOption.getAttribute('data-supported-precisions');
+                
+                if (supportedPrecisions) {
+                    // Save current selection if possible
+                    const currentPrecision = precisionSelect.value;
+                    
+                    const precisionArray = supportedPrecisions.split(',');
+                    
+                    // Clear existing options
+                    precisionSelect.innerHTML = '';
+                    
+                    // Only add supported precision options
+                    if (precisionArray.includes('fp16')) {
+                        const option = document.createElement('option');
+                        option.value = 'fp16';
+                        option.textContent = 'FP16';
+                        precisionSelect.appendChild(option);
+                    }
+                    
+                    if (precisionArray.includes('bf16')) {
+                        const option = document.createElement('option');
+                        option.value = 'bf16';
+                        option.textContent = 'BF16';
+                        precisionSelect.appendChild(option);
+                    }
+                    
+                    if (precisionArray.includes('fp32')) {
+                        const option = document.createElement('option');
+                        option.value = 'fp32';
+                        option.textContent = 'FP32';
+                        precisionSelect.appendChild(option);
+                    }
+                    
+                    // If none of the standard options are available, add fp32 as fallback
+                    if (precisionSelect.options.length === 0) {
+                        const option = document.createElement('option');
+                        option.value = 'fp32';
+                        option.textContent = 'FP32';
+                        precisionSelect.appendChild(option);
+                    }
+                    
+                    // Try to restore previous selection if it's still available
+                    if (currentPrecision) {
+                        for (let i = 0; i < precisionSelect.options.length; i++) {
+                            if (precisionSelect.options[i].value === currentPrecision) {
+                                precisionSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Add event listener for GPU model changes
+            gpuModelSelect.addEventListener('change', updatePrecisionOptions);
+            
+            // Initialize precision dropdown on page load
+            updatePrecisionOptions();
+            
+            // Update parallelism inputs based on strategy
+            parallelismStrategySelect.addEventListener('change', function() {
+                const strategy = this.value;
+                updateParallelismInputs(strategy);
+            });
+
+            tpSizeInput.addEventListener('input', updateNumGpus);
+            ppSizeInput.addEventListener('input', updateNumGpus);
+
+            function updateParallelismInputs(strategy) {
+                tpGroup.style.display = 'none';
+                ppGroup.style.display = 'none';
+                tpSizeInput.value = 1;
+                ppSizeInput.value = 1;
+
+                if (strategy === 'tensor') {
+                    tpGroup.style.display = 'block';
+                } else if (strategy === 'pipeline') {
+                    ppGroup.style.display = 'block';
+                } else if (strategy === 'tensor_pipeline') {
+                    tpGroup.style.display = 'block';
+                    ppGroup.style.display = 'block';
+                }
+                updateNumGpus();
+            }
+
+            function updateNumGpus() {
+                const tpSize = parseInt(tpSizeInput.value) || 1;
+                const ppSize = parseInt(ppSizeInput.value) || 1;
+                const strategy = parallelismStrategySelect.value;
+
+                let numGpus = 1;
+                if (strategy === 'tensor') {
+                    numGpus = tpSize;
+                } else if (strategy === 'pipeline') {
+                    numGpus = ppSize;
+                } else if (strategy === 'tensor_pipeline') {
+                    numGpus = tpSize * ppSize;
+                }
+                
+                // Ensure positive values
+                tpSizeInput.value = Math.max(1, tpSize);
+                ppSizeInput.value = Math.max(1, ppSize);
+
+                numGpusInput.value = Math.max(1, numGpus);
+            }
+
+            // Initialize parallelism inputs
+            updateParallelismInputs(parallelismStrategySelect.value);
+            
+            // Calculate button click handler
+            calculateBtn.addEventListener('click', function() {
+                // Show loading
+                loadingElement.style.display = 'block';
+                errorElement.style.display = 'none';
+                
+                // Prepare data
+                const data = {
+                    model_name: modelPresetSelect.value,
+                    hidden_dim: parseInt(hiddenDimInput.value),
+                    ff_dim: parseInt(ffDimInput.value),
+                    num_layers: parseInt(numLayersInput.value),
+                    vocab_size: parseInt(vocabSizeInput.value),
+                    seq_len: parseInt(seqLenInput.value),
+                    batch_size: parseInt(batchSizeInput.value),
+                    gpu_tflops: parseFloat(gpuModelSelect.value),
+                    efficiency: parseFloat(efficiencyInput.value),
+                    precision: precisionSelect.value,
+                    // Add parallelism settings
+                    parallelism_strategy: parallelismStrategySelect.value,
+                    tp_size: parseInt(tpSizeInput.value) || 1,
+                    pp_size: parseInt(ppSizeInput.value) || 1,
+                    num_gpus: parseInt(numGpusInput.value) || 1
+                };
+                
+                // Add GPU ID if available
+                const selectedGpuOption = gpuModelSelect.options[gpuModelSelect.selectedIndex];
+                const gpuId = selectedGpuOption.getAttribute('data-id');
+                if (gpuId) {
+                    data.gpu_id = gpuId;
+                }
+                
+                // Call API
+                fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Calculation failed');
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    // Hide loading
+                    loadingElement.style.display = 'none';
+                    
+                    // Update model summary
+                    modelSummary.innerHTML = `
+                        <p><strong>Model Name:</strong> ${result.model_name}</p>
+                        <p><strong>Parameters:</strong> ${result.parameters_billions} billion</p>
+                    `;
+                    
+                    // Format VRAM values consistently
+                    function formatVRAM(value) {
+                        return value ? value.toFixed(2) : 'N/A';
+                    }
+
+                    // Update memory results - Show Per GPU and Total
+                    memoryResults.innerHTML = `
+                        <h4>VRAM Requirements (Per GPU)</h4>
+                        <table>
+                            <tr><th>Component</th><th>Size (GB)</th></tr>
+                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model_per_gpu)}</td></tr>
+                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache_per_gpu)}</td></tr>
+                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations_per_gpu)}</td></tr>
+                            <tr class="total-row"><td><strong>Total VRAM (Per GPU)</strong></td><td><strong>${formatVRAM(result.vram.total_per_gpu)}</strong></td></tr>
+                        </table>
+                        <br>
+                        <h4>VRAM Requirements (System Wide)</h4>
+                        <table>
+                            <tr><th>Component</th><th>Size (GB)</th></tr>
+                             <tr><td>Model Weights (Total)</td><td>${formatVRAM(result.vram.model)}</td></tr>
+                             <tr><td>KV Cache (Total)</td><td>${formatVRAM(result.vram.kv_cache)}</td></tr>
+                             <tr><td>Activations (Total)</td><td>${formatVRAM(result.vram.activations)}</td></tr>
+                            <tr class="total-row"><td><strong>Total VRAM (System Wide Estimate)</strong></td><td><strong>${formatVRAM(result.vram.total_system_wide)}</strong></td></tr>
+                        </table>
+                    `;
+                    
+                    // Update compute results (FLOPs don't change based on parallelism display, but calculations might)
+                    computeResults.innerHTML = `
+                        <table>
+                            <tr><th>Component</th><th>FLOPs</th></tr>
+                            <tr><td>Attention</td><td>${formatNumber(result.flops.attention)}</td></tr>
+                            <tr><td>Feedforward</td><td>${formatNumber(result.flops.feedforward)}</td></tr>
+                            <tr><td>Prefill (Full Context)</td><td>${formatNumber(result.flops.prefill)}</td></tr>
+                            <tr><td>Per Token Generation</td><td>${formatNumber(result.flops.per_token)}</td></tr>
+                        </table>
+                    `;
+                    
+                    // Update performance results - Show parallelism details
+                    let parallelismInfo = `Strategy: ${result.parallelism.strategy}`;
+                    if (result.parallelism.strategy !== 'none') {
+                        parallelismInfo += ` (TP=${result.parallelism.tp_size}, PP=${result.parallelism.pp_size})`;
+                        parallelismInfo += `<br>Total GPUs: ${result.parallelism.num_gpus}`;
+                        parallelismInfo += `<br>Total Effective TFLOPs: ${result.parallelism.effective_tflops.toFixed(1)}`;
+                    }
+
+                    performanceResults.innerHTML = `
+                        <p><strong>Parallelism:</strong> ${parallelismInfo}</p>
+                        <table>
+                            <tr><th>Metric</th><th>Value</th></tr>
+                            <tr><td>Generation Speed (System Wide)</td><td>${result.performance.tokens_per_second.toFixed(2)} tokens/sec</td></tr>
+                            <tr><td>Prefill Latency (Estimated)</td><td>${formatTime(result.performance.prefill_latency)}</td></tr>
+                            <tr><td>Per-Token Latency (Estimated)</td><td>${formatTime(result.performance.token_latency)}</td></tr>
+                            <tr><td>Time for 1000 Tokens</td><td>${formatTime(result.performance.token_latency * 1000)}</td></tr>
+                        </table>
+                    `;
+                    
+                    // After updating the other sections, perform scaling analysis
+                    performScalingAnalysis(data);
+                })
+                .catch(error => {
+                    // Show error
+                    loadingElement.style.display = 'none';
+                    errorElement.style.display = 'block';
+                    errorElement.textContent = 'Error: ' + error.message;
+                });
+            });
+
+            // Function to perform scaling analysis
+            function performScalingAnalysis(data) {
+                // Prepare data for scaling analysis
+                const selectedModelOption = modelPresetSelect.options[modelPresetSelect.selectedIndex];
+                const selectedGpuOption = gpuModelSelect.options[gpuModelSelect.selectedIndex];
+                
+                const modelConfig = {
+                    name: selectedModelOption.value,
+                    hidden_dim: parseInt(hiddenDimInput.value),
+                    ff_dim: parseInt(ffDimInput.value),
+                    num_layers: parseInt(numLayersInput.value),
+                    vocab_size: parseInt(vocabSizeInput.value),
+                    seq_len: parseInt(seqLenInput.value)
+                };
+                
+                const gpuConfig = {
+                    name: selectedGpuOption.text,
+                    vram: parseFloat(selectedGpuOption.getAttribute('data-vram')),
+                    tflops: parseFloat(gpuModelSelect.value)
+                };
+                
+                const scalingData = {
+                    model_config: modelConfig,
+                    gpu_config: gpuConfig,
+                    batch_size: parseInt(batchSizeInput.value),
+                    sequence_length: parseInt(seqLenInput.value),
+                    precision: precisionSelect.value
+                };
+                
+                // Call scaling analysis API
+                fetch('/api/model_scaling_analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scalingData)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Scaling analysis failed');
+                    }
+                    return response.json();
+                })
+                .then(scalingResult => {
+                    const scalingResults = document.getElementById('scaling-results');
+                    
+                    // Format the scaling analysis results
+                    let scalingHtml = '';
+                    
+                    // Show total VRAM requirements
+                    scalingHtml += `
+                        <p><strong>Total VRAM Required:</strong> ${scalingResult.total_vram_required_gb.toFixed(2)} GB</p>
+                        <p><strong>GPU VRAM Capacity:</strong> ${scalingResult.gpu_vram_capacity_gb.toFixed(2)} GB</p>
+                    `;
+                    
+                    // Show if model fits on single GPU
+                    if (scalingResult.fits_on_single_gpu) {
+                        scalingHtml += `
+                            <div style="background-color: #e8f5e9; border-left: 4px solid #4CAF50; padding: 10px; margin: 10px 0;">
+                                <p><strong>✓ Model fits on a single GPU</strong></p>
+                            </div>
+                        `;
+                    } else {
+                        scalingHtml += `
+                            <div style="background-color: #ffebee; border-left: 4px solid #f44336; padding: 10px; margin: 10px 0;">
+                                <p><strong>⚠ Model does not fit on a single GPU</strong></p>
+                                <p><strong>GPUs Required:</strong> ${scalingResult.num_gpus_required}</p>
+                                <p><strong>Recommended Strategy:</strong> ${scalingResult.recommended_strategy.toUpperCase()}</p>
+                            </div>
+                        `;
+                        
+                        // Add scaling details if model doesn't fit
+                        if (scalingResult.scaling_details) {
+                            const details = scalingResult.scaling_details;
+                            
+                            if (details.note) {
+                                // Show message if advanced scaling is not available
+                                scalingHtml += `<p>${details.note}</p>`;
+                            } else {
+                                // Show detailed parallelism information
+                                scalingHtml += `
+                                    <h4>Parallelism Configuration</h4>
+                                    <table>
+                                        <tr>
+                                            <td>Tensor Parallelism Degree:</td>
+                                            <td>${details.tensor_parallelism_degree}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Pipeline Parallelism Degree:</td>
+                                            <td>${details.pipeline_parallelism_degree}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>VRAM per GPU:</td>
+                                            <td>${details.vram_per_gpu_gb.toFixed(2)} GB</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Communication Overhead:</td>
+                                            <td>${details.communication_overhead_gb.toFixed(2)} GB</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Estimated Efficiency:</td>
+                                            <td>${(details.estimated_efficiency * 100).toFixed(1)}%</td>
+                                        </tr>
+                                    </table>
+                                    
+                                    <div style="margin-top: 15px;">
+                                        <strong>What this means:</strong>
+                                        <ul>
+                                            <li><strong>Tensor Parallelism (TP):</strong> Splits model tensors across GPUs. Good for reducing memory per GPU with minimal latency impact.</li>
+                                            <li><strong>Pipeline Parallelism (PP):</strong> Splits model layers across GPUs. Good for very deep models but adds pipeline bubble overhead.</li>
+                                            <li><strong>TP+PP:</strong> Combined approach for extremely large models that need both forms of parallelism.</li>
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }
+                    
+                    scalingResults.innerHTML = scalingHtml;
+                })
+                .catch(error => {
+                    console.error('Scaling analysis error:', error);
+                    document.getElementById('scaling-results').innerHTML = `
+                        <div class="error">Failed to perform scaling analysis: ${error.message}</div>
+                    `;
+                });
+            }
+        });
+    </script>
+</body>
+</html> 
