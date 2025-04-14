@@ -1,5 +1,25 @@
+import logging
+from pathlib import Path
 from typing import Literal, Dict, Any
 from src.advanced_calculator.modules.utils import validate_positive_integer, validate_positive_number
+
+# Setup logging
+log_dir = Path(__file__).parent.parent.parent.parent / "logs"
+log_dir.mkdir(exist_ok=True)
+vram_logger = logging.getLogger("VRAMCalculator")
+vram_logger.setLevel(logging.DEBUG)
+
+# Create handlers if they don't exist
+if not vram_logger.handlers:
+    # File handler
+    file_handler = logging.FileHandler(log_dir / "vram_detailed_calculations.log")
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    vram_logger.addHandler(file_handler)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter('%(name)s - %(levelname)s - %(message)s'))
+    vram_logger.addHandler(console_handler)
 
 class VRAMCalculator:
     """
@@ -13,6 +33,14 @@ class VRAMCalculator:
             history_callback: Optional callback function to log calculation history
         """
         self._history_callback = history_callback
+        self.logger = vram_logger
+        self.logger.info("VRAMCalculator initialized")
+
+    def _log_message(self, message: str):
+        """Helper method to log messages to both file and callback if present."""
+        self.logger.info("\n" + message)
+        if self._history_callback:
+            self._history_callback(message)
 
     def calculate_model_vram(self, 
                             hidden_dimensions: int, 
@@ -83,12 +111,19 @@ class VRAMCalculator:
         # Apply overhead factor
         gb_total_with_overhead = gb_total * overhead_factor
         
-        if self._history_callback:
-            self._history_callback(
-                f"Model_VRAM(hidden_dim={hidden_dimensions}, ff_dim={feedforward_dimensions}, "
-                f"num_layers={num_layers}, vocab_size={vocab_size}, precision={precision}, "
-                f"overhead_factor={overhead_factor}) = {gb_total_with_overhead:.2f} GB"
-            )
+        # Add detailed logging of each component
+        self._log_message(
+            f"Model_VRAM_Details:\n"
+            f"  - Attention params per layer: {attention_params:,} ({(attention_params * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - FF params per layer: {ff_params:,} ({(ff_params * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Layer norm params per layer: {layer_norm_params:,} ({(layer_norm_params * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Total params per layer: {params_per_layer:,} ({(params_per_layer * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Total layer params: {total_layer_params:,} ({(total_layer_params * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Embedding params: {embedding_params:,} ({(embedding_params * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Final layer norm: {final_layer_norm:,} ({(final_layer_norm * bytes_per_param / (1024**3)):.3f} GB)\n"
+            f"  - Total params: {total_params:,} ({gb_total:.3f} GB)\n"
+            f"  - With overhead ({overhead_factor}x): {gb_total_with_overhead:.3f} GB"
+        )
         
         return gb_total_with_overhead
     
@@ -137,12 +172,18 @@ class VRAMCalculator:
         # Convert to gigabytes
         kv_cache_gb = kv_cache_bytes_with_overhead / (1024 ** 3)
         
-        if self._history_callback:
-            self._history_callback(
-                f"KV_Cache_VRAM(batch_size={batch_size}, sequence_length={sequence_length}, "
-                f"hidden_dimensions={hidden_dimensions}, num_layers={num_layers}, "
-                f"precision={precision}, overhead_factor={overhead_factor}) = {kv_cache_gb:.2f} GB"
-            )
+        # Add detailed logging
+        per_layer_bytes = 2 * batch_size * sequence_length * hidden_dimensions * bytes_per_value
+        per_layer_gb = per_layer_bytes / (1024 ** 3)
+        
+        self._log_message(
+            f"KV_Cache_VRAM_Details:\n"
+            f"  - Per layer K cache: {(per_layer_bytes/2):,} bytes ({per_layer_gb/2:.3f} GB)\n"
+            f"  - Per layer V cache: {(per_layer_bytes/2):,} bytes ({per_layer_gb/2:.3f} GB)\n"
+            f"  - Per layer total: {per_layer_bytes:,} bytes ({per_layer_gb:.3f} GB)\n"
+            f"  - All layers: {kv_cache_bytes:,} bytes ({kv_cache_bytes/(1024**3):.3f} GB)\n"
+            f"  - With overhead ({overhead_factor}x): {kv_cache_gb:.3f} GB"
+        )
         
         return kv_cache_gb
         
@@ -154,11 +195,10 @@ class VRAMCalculator:
                                   precision: Literal["fp16", "fp32", "bf16"] = "fp16",
                                   overhead_factor: float = 1.1) -> float:
         """
-        Calculate peak VRAM required for activations during inference.
+        Calculate peak VRAM required for temporary activations during inference.
         
-        This method estimates the amount of VRAM needed for activations, including:
-        - KV cache (key-value cache for attention mechanism)
-        - Temporary activations in each layer
+        This method estimates the amount of VRAM needed for temporary activations
+        during the forward pass, NOT including the KV cache which is calculated separately.
         
         Args:
             batch_size: Number of sequences processed in parallel
@@ -169,7 +209,7 @@ class VRAMCalculator:
             overhead_factor: Multiplicative factor to account for runtime overhead (default: 1.1)
             
         Returns:
-            Peak activations VRAM size in gigabytes (GB)
+            Peak temporary activations VRAM size in gigabytes (GB)
         """
         validate_positive_integer(batch_size, "Batch size")
         validate_positive_integer(sequence_length, "Sequence length")
@@ -182,127 +222,101 @@ class VRAMCalculator:
         if precision.lower() in ["fp16", "bf16"]:
             bytes_per_value = 2
             
-        # Get KV cache size from dedicated function
-        # Note: We use overhead_factor=1.0 here as we'll apply the overhead to the total later
-        kv_cache_size = self.calculate_kv_cache_vram(
-            batch_size, sequence_length, hidden_dimensions, num_layers, precision, 1.0
-        ) * (1024 ** 3)  # Convert back to bytes for calculation
-        
         # Temporary activations per layer during forward pass
         # This includes attention outputs, feedforward intermediate activations, etc.
         # Conservative estimate: 4 * batch_size * sequence_length * hidden_dimensions bytes per layer
-        temp_activations_size = 4 * batch_size * sequence_length * hidden_dimensions * bytes_per_value
-        
-        # Total activation memory without overhead
-        total_bytes = kv_cache_size + temp_activations_size
+        temp_activations_size = 4 * batch_size * sequence_length * hidden_dimensions * num_layers * bytes_per_value
         
         # Apply overhead factor
-        total_bytes_with_overhead = total_bytes * overhead_factor
+        total_bytes_with_overhead = temp_activations_size * overhead_factor
         
         # Convert to gigabytes
         gb_total = total_bytes_with_overhead / (1024 ** 3)
         
-        if self._history_callback:
-            self._history_callback(
-                f"Activations_VRAM(batch_size={batch_size}, sequence_length={sequence_length}, "
-                f"hidden_dimensions={hidden_dimensions}, num_layers={num_layers}, "
-                f"precision={precision}, overhead_factor={overhead_factor}) = {gb_total:.2f} GB"
-            )
+        # Add detailed logging
+        per_layer_bytes = 4 * batch_size * sequence_length * hidden_dimensions * bytes_per_value
+        per_layer_gb = per_layer_bytes / (1024 ** 3)
+        
+        self._log_message(
+            f"Temp_Activations_VRAM_Details:\n"
+            f"  - Per layer breakdown:\n"
+            f"    * Query/Key/Value activations: {(3 * batch_size * sequence_length * hidden_dimensions * bytes_per_value):,} bytes\n"
+            f"    * Attention output: {(batch_size * sequence_length * hidden_dimensions * bytes_per_value):,} bytes\n"
+            f"  - Per layer total: {per_layer_bytes:,} bytes ({per_layer_gb:.3f} GB)\n"
+            f"  - All layers: {temp_activations_size:,} bytes ({temp_activations_size/(1024**3):.3f} GB)\n"
+            f"  - With overhead ({overhead_factor}x): {gb_total:.3f} GB"
+        )
         
         return gb_total
 
     def calculate_total_vram(self,
-                           batch_size: int,
-                           sequence_length: int,
-                           hidden_dimensions: int,
-                           feedforward_dimensions: int,
-                           num_layers: int,
-                           vocab_size: int,
-                           precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                           weights_overhead: float = 1.05,
-                           kv_cache_overhead: float = 1.05,
-                           activations_overhead: float = 1.1,
-                           system_overhead: float = 1.05) -> float:
+                             batch_size: int,
+                             sequence_length: int,
+                             hidden_dimensions: int,
+                             num_layers: int,
+                             precision: Literal["fp16", "fp32", "bf16"] = "fp16",
+                             weights_overhead: float = 1.1,
+                             activations_overhead: float = 1.1,
+                             system_overhead: float = 1.1) -> float:
         """
         Calculate total VRAM required for model inference.
         
-        This method sums the VRAM required for:
-        - Model weights
-        - KV cache
-        - Other activations
-        - Plus a system overhead
+        This method calculates the total VRAM needed by:
+        1. Calculating base VRAM for each component
+        2. Applying component-specific overheads
+        3. Applying system overhead to the total
         
         Args:
             batch_size: Number of sequences processed in parallel
             sequence_length: Length of input sequences in tokens
             hidden_dimensions: Size of hidden dimensions in the model
-            feedforward_dimensions: Size of feedforward network dimensions
             num_layers: Number of transformer layers
-            vocab_size: Size of vocabulary for embeddings
             precision: Data precision (fp16=2 bytes, bf16=2 bytes, fp32=4 bytes)
-            weights_overhead: Overhead factor for model weights (default: 1.05)
-            kv_cache_overhead: Overhead factor for KV cache (default: 1.05)
-            activations_overhead: Overhead factor for other activations (default: 1.1)
-            system_overhead: Overall system overhead factor applied to the sum (default: 1.05)
+            weights_overhead: Overhead factor for model weights (default: 1.1)
+            activations_overhead: Overhead factor for activations (default: 1.1)
+            system_overhead: System-level overhead factor (default: 1.1)
             
         Returns:
             Total VRAM size in gigabytes (GB)
         """
-        # Calculate model weights VRAM
-        weights_vram = self.calculate_model_vram(
-            hidden_dimensions,
-            feedforward_dimensions,
-            num_layers,
-            vocab_size,
-            precision,
-            weights_overhead
+        # Calculate base VRAM for each component without overheads
+        weights_base = self.calculate_model_vram(
+            hidden_dimensions, hidden_dimensions, num_layers, hidden_dimensions, precision, overhead_factor=1.0
         )
         
-        # Calculate KV cache VRAM
-        kv_cache_vram = self.calculate_kv_cache_vram(
-            batch_size,
-            sequence_length,
-            hidden_dimensions,
-            num_layers,
-            precision,
-            kv_cache_overhead
+        kv_cache_base = self.calculate_kv_cache_vram(
+            batch_size, sequence_length, hidden_dimensions, num_layers, precision, overhead_factor=1.0
         )
         
-        # Calculate other activations VRAM with specific overhead
-        # We first get the raw activations without overhead to avoid double-counting
-        raw_activations_vram = self.calculate_activations_vram(
-            batch_size,
-            sequence_length,
-            hidden_dimensions,
-            num_layers,
-            precision,
-            1.0  # No overhead here, we'll apply it separately
+        activations_base = self.calculate_activations_vram(
+            batch_size, sequence_length, hidden_dimensions, num_layers, precision, overhead_factor=1.0
         )
         
-        raw_kv_cache_vram = self.calculate_kv_cache_vram(
-            batch_size,
-            sequence_length,
-            hidden_dimensions,
-            num_layers,
-            precision,
-            1.0  # No overhead here either
-        )
+        # Apply component-specific overheads
+        weights_vram = weights_base * weights_overhead
+        kv_cache_vram = kv_cache_base * activations_overhead
+        activations_vram = activations_base * activations_overhead
         
-        other_activations_raw = raw_activations_vram - raw_kv_cache_vram
-        other_activations_vram = other_activations_raw * activations_overhead
+        # Sum all components
+        subtotal = weights_vram + kv_cache_vram + activations_vram
         
-        # Sum components
-        components_sum = weights_vram + kv_cache_vram + other_activations_vram
-        
-        # Apply overall system overhead
-        total_vram = components_sum * system_overhead
+        # Apply system overhead to total
+        total_vram = subtotal * system_overhead
         
         if self._history_callback:
-            self._history_callback(
-                f"Total_VRAM(weights={weights_vram:.2f} GB, "
-                f"kv_cache={kv_cache_vram:.2f} GB, "
-                f"other_activations={other_activations_vram:.2f} GB, "
-                f"system_overhead={system_overhead}) = {total_vram:.2f} GB"
+            self._log_message(
+                f"Total_VRAM_Calculation_Details:\n"
+                f"Base components (before overheads):\n"
+                f"  1. Model Weights: {weights_base:.3f} GB\n"
+                f"  2. KV Cache: {kv_cache_base:.3f} GB\n"
+                f"  3. Temporary Activations: {activations_base:.3f} GB\n"
+                f"\nAfter component overheads:\n"
+                f"  1. Model Weights (x{weights_overhead}): {weights_vram:.3f} GB\n"
+                f"  2. KV Cache (x{activations_overhead}): {kv_cache_vram:.3f} GB\n"
+                f"  3. Temporary Activations (x{activations_overhead}): {activations_vram:.3f} GB\n"
+                f"  4. Subtotal: {subtotal:.3f} GB\n"
+                f"\nFinal total with system overhead (x{system_overhead}):\n"
+                f"  {total_vram:.3f} GB"
             )
         
         return total_vram

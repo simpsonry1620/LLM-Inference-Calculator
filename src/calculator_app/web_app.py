@@ -432,89 +432,79 @@ def calculate():
             # Estimate activations as 10% of model size for fallback
             activations_vram = model_vram * 0.1
         
-        # Calculate total VRAM with breakdown
-        weights_overhead = 1.05  # 5% overhead for model weights
-        kv_cache_overhead = 1.05  # 5% overhead for KV cache
-        activations_overhead = 1.1  # 10% overhead for activations
-        system_overhead = 1.05  # 5% overhead for system
-        
-        # Apply overheads
-        model_vram_with_overhead = model_vram * weights_overhead
-        kv_cache_with_overhead = kv_cache_vram * kv_cache_overhead
-        activations_with_overhead = activations_vram * activations_overhead
-        
-        # Calculate subtotal before system overhead
-        subtotal_vram = model_vram_with_overhead + kv_cache_with_overhead + activations_with_overhead
-        
-        # Apply system overhead to get total
-        total_vram = subtotal_vram * system_overhead
-        
-        # Try to use the calculator's total_vram method if it exists and produces reasonable results
+        # Use the calculator's total_vram method directly with error handling
         try:
-            calc_total_vram = calculator.calculate_total_vram(
-                batch_size, seq_len, hidden_dim, ff_dim, num_layers, vocab_size, precision,
-                weights_overhead=weights_overhead,
-                kv_cache_overhead=kv_cache_overhead,
-                activations_overhead=activations_overhead,
-                system_overhead=system_overhead
+            # First try with the new signature (without feedforward_dimensions)
+            total_vram = calculator.calculate_total_vram(
+                batch_size, seq_len, hidden_dim, num_layers, precision,
+                weights_overhead=1.05,  # 5% overhead for model weights
+                activations_overhead=1.1,  # 10% overhead for activations
+                system_overhead=1.05  # 5% overhead for system
             )
-            # Use the calculator's total if it seems reasonable
-            if calc_total_vram > 0 and calc_total_vram >= model_vram:
-                total_vram = calc_total_vram
-        except:
-            # Keep using our calculated total if there's an error
-            pass
-        
-        # Adjust calculations based on parallelism
-        # Note: We might need to refine these adjustments based on specific parallelism implementation details.
-        # This is a simplified model.
-        
-        # Tensor Parallelism (TP): Scales FLOPs/activations/weights across TP GPUs
-        # Pipeline Parallelism (PP): Scales stages across PP GPUs, affecting latency
-        
-        effective_gpu_tflops = gpu_tflops * num_gpus # Total compute power
-        flops_per_gpu = gpu_tflops # Compute power per individual GPU
+        except TypeError as e:
+            # If that fails, try with the old signature (with feedforward_dimensions)
+            app.logger.warning(f"First calculate_total_vram attempt failed: {e}. Trying with feedforward_dimensions.")
+            try:
+                total_vram = calculator.calculate_total_vram(
+                    batch_size, seq_len, hidden_dim, ff_dim, num_layers, vocab_size, precision,
+                    weights_overhead=1.05,
+                    activations_overhead=1.1,
+                    system_overhead=1.05
+                )
+            except Exception as e2:
+                app.logger.error(f"All calculate_total_vram attempts failed: {e2}", exc_info=True)
+                # Fallback calculation
+                model_vram_with_overhead = model_vram * 1.05
+                kv_cache_with_overhead = kv_cache_vram * 1.05
+                activations_with_overhead = activations_vram * 1.1
+                subtotal = model_vram_with_overhead + kv_cache_with_overhead + activations_with_overhead
+                total_vram = subtotal * 1.05
+                app.logger.info(f"Using fallback total VRAM calculation: {total_vram:.2f} GB")
+
+        # Apply overheads for display purposes
+        model_vram_with_overhead = model_vram * 1.05
+        kv_cache_with_overhead = kv_cache_vram * 1.05
+        activations_with_overhead = activations_vram * 1.1
 
         # VRAM calculations (per GPU)
         # Model weights are sharded with TP
-        model_vram_per_gpu = calculator.calculate_model_vram(
-            hidden_dim, ff_dim, num_layers, vocab_size, precision
-        ) / tp_size 
+        model_vram_per_gpu = model_vram / tp_size 
         
-        # KV cache is typically per sequence, not sharded by TP, but check batch size distribution?
-        # For simplicity, assume KV cache is replicated or managed per pipeline stage
-        kv_cache_vram_per_gpu = calculator.calculate_kv_cache_vram(
-            max(1, batch_size // pp_size), seq_len, hidden_dim, num_layers, precision # Ensure min batch size 1
-        ) 
+        # KV cache is typically per sequence, not sharded by TP, but check batch size distribution
+        kv_cache_vram_per_gpu = kv_cache_vram
         
-        # Activations are complex. With TP, they are sharded. With PP, only one stage\'s activations are needed.
-        # Simplified: Divide by TP size. PP might further reduce this, but depends on implementation.
+        # Activations are complex. With TP, they are sharded. With PP, only one stage's activations are needed.
         try:
-            activations_vram_per_gpu = calculator.calculate_activations_vram(
-                max(1, batch_size // pp_size), seq_len, hidden_dim, num_layers, precision # Ensure min batch size 1
-            ) / tp_size 
+            activations_vram_per_gpu = activations_vram / tp_size 
         except:
             activations_vram_per_gpu = (model_vram / tp_size) * 0.1 # Fallback estimate
 
-        # Apply overheads per GPU
-        model_vram_per_gpu_with_overhead = model_vram_per_gpu * weights_overhead
-        kv_cache_per_gpu_with_overhead = kv_cache_vram_per_gpu * kv_cache_overhead
-        activations_per_gpu_with_overhead = activations_vram_per_gpu * activations_overhead
-        
-        subtotal_vram_per_gpu = model_vram_per_gpu_with_overhead + kv_cache_per_gpu_with_overhead + activations_per_gpu_with_overhead
-        total_vram_per_gpu = subtotal_vram_per_gpu * system_overhead
-        
+        # Apply overheads for per-GPU display
+        model_vram_per_gpu_with_overhead = model_vram_per_gpu * 1.05
+        kv_cache_per_gpu_with_overhead = kv_cache_vram_per_gpu * 1.05
+        activations_per_gpu_with_overhead = activations_vram_per_gpu * 1.1
+
+        # Calculate per-GPU total correctly - USE THE SAME FORMULA as system-wide
+        # When num_gpus = 1, this should exactly match total_vram
+        subtotal_per_gpu = model_vram_per_gpu_with_overhead + kv_cache_per_gpu_with_overhead + activations_per_gpu_with_overhead
+        total_vram_per_gpu = subtotal_per_gpu * 1.05
+
+        # When running on a single GPU, ensure total_per_gpu and total_system_wide match
+        if tp_size == 1 and pp_size == 1:
+            # Force them to be the same value
+            total_vram_per_gpu = total_vram
+
         # Performance Estimates
         # Throughput: Scales with total effective FLOPs
         tokens_per_second = calculator.estimate_inference_throughput(
-            flops_per_token, effective_gpu_tflops, efficiency 
+            flops_per_token, gpu_tflops, efficiency 
         )
         
         # Latency: More complex
         # Prefill Latency: Limited by the slowest stage in PP, compute distributed by TP
         prefill_latency_per_stage = calculator.estimate_prefill_latency(
             flops_prefill / pp_size, # FLOPs per PP stage
-            flops_per_gpu * tp_size, # FLOPs available per stage (TP combined)
+            gpu_tflops * tp_size, # FLOPs available per stage (TP combined)
             efficiency
         )
         # Add pipeline bubble latency (simplistic: (PP-1) * time_per_stage)
@@ -525,7 +515,7 @@ def calculate():
         # Token Latency (time per token): Limited by slowest stage, compute distributed by TP
         token_latency_per_stage = calculator.estimate_token_generation_latency(
             flops_per_token / pp_size, # FLOPs per token per PP stage
-            flops_per_gpu * tp_size, # FLOPs available per stage (TP combined)
+            gpu_tflops * tp_size, # FLOPs available per stage (TP combined)
             efficiency
         )
         # In steady state, pipeline produces a token every stage latency
@@ -592,7 +582,13 @@ def calculate():
                 "tp_size": tp_size,
                 "pp_size": pp_size,
                 "num_gpus": num_gpus,
-                "effective_tflops": effective_gpu_tflops
+                "effective_tflops": gpu_tflops
+            },
+            "overheads_used": { # Add overhead values to output
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
             }
         }
 

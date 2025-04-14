@@ -654,21 +654,40 @@
                     memoryResults.innerHTML = `
                         <h4>VRAM Requirements (Per GPU)</h4>
                         <table>
-                            <tr><th>Component</th><th>Size (GB)</th></tr>
-                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model_per_gpu)}</td></tr>
-                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache_per_gpu)}</td></tr>
-                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations_per_gpu)}</td></tr>
-                            <tr class="total-row"><td><strong>Total VRAM (Per GPU)</strong></td><td><strong>${formatVRAM(result.vram.total_per_gpu)}</strong></td></tr>
+                            <tr><th>Component</th><th>Base Size (GB)</th><th>With Overhead (GB)</th></tr>
+                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model_per_gpu)}</td><td>${formatVRAM(result.vram.model_per_gpu * result.overheads_used.weights)}</td></tr>
+                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache_per_gpu)}</td><td>${formatVRAM(result.vram.kv_cache_per_gpu * result.overheads_used.kv_cache)}</td></tr>
+                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations_per_gpu)}</td><td>${formatVRAM(result.vram.activations_per_gpu * result.overheads_used.activations)}</td></tr>
+                            <tr class="total-row">
+                                <td><strong>Total VRAM</strong></td>
+                                <td><strong>${formatVRAM(
+                                    result.vram.model_per_gpu + 
+                                    result.vram.kv_cache_per_gpu + 
+                                    result.vram.activations_per_gpu
+                                )}</strong></td>
+                                <td><strong>${formatVRAM(result.vram.total_per_gpu)}</strong></td>
+                            </tr>
                         </table>
-                        <br>
+                        <small>Overheads applied: Weights (${result.overheads_used.weights}x), KV Cache (${result.overheads_used.kv_cache}x), Activations (${result.overheads_used.activations}x), System (${result.overheads_used.system}x)</small>
+                        
+                        <br><br>
                         <h4>VRAM Requirements (System Wide)</h4>
                         <table>
-                            <tr><th>Component</th><th>Size (GB)</th></tr>
-                             <tr><td>Model Weights (Total)</td><td>${formatVRAM(result.vram.model)}</td></tr>
-                             <tr><td>KV Cache (Total)</td><td>${formatVRAM(result.vram.kv_cache)}</td></tr>
-                             <tr><td>Activations (Total)</td><td>${formatVRAM(result.vram.activations)}</td></tr>
-                            <tr class="total-row"><td><strong>Total VRAM (System Wide Estimate)</strong></td><td><strong>${formatVRAM(result.vram.total_system_wide)}</strong></td></tr>
+                            <tr><th>Component</th><th>Base Size (GB)</th><th>With Overhead (GB)</th></tr>
+                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model)}</td><td>${formatVRAM(result.vram.model_with_overhead)}</td></tr>
+                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache)}</td><td>${formatVRAM(result.vram.kv_cache_with_overhead)}</td></tr>
+                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations)}</td><td>${formatVRAM(result.vram.activations_with_overhead)}</td></tr>
+                            <tr class="total-row">
+                                <td><strong>Total VRAM</strong></td>
+                                <td><strong>${formatVRAM(
+                                    result.vram.model + 
+                                    result.vram.kv_cache + 
+                                    result.vram.activations
+                                )}</strong></td>
+                                <td><strong>${formatVRAM(result.vram.total_system_wide)}</strong></td>
+                            </tr>
                         </table>
+                        <small>Total includes component-specific overheads plus ${result.overheads_used.system}x system overhead</small>
                     `;
                     
                     // Update compute results (FLOPs don't change based on parallelism display, but calculations might)
