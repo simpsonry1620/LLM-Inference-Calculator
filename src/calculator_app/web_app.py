@@ -866,4 +866,4 @@ def parse_log_file(log_path, log_type):
 
 if __name__ == '__main__':
     # Logging is already configured via app.logger
-    app.run(debug=True) # debug=True automatically enables Flask's reloader and debugger 
+    app.run(host='0.0.0.0', debug=True) # debug=True automatically enables Flask's reloader and debugger 
