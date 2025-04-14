@@ -38,7 +38,8 @@ A Python-based calculator for estimating and planning Large Language Model (LLM)
 The easiest way to use the calculator is through the web interface:
 
 ```
-python app.py
+# Make sure you are in the project root directory
+python -m src.calculator_app.web_app
 ```
 
 Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator. See [README_WEB_GUI.md](README_WEB_GUI.md) for more details.
@@ -48,8 +49,9 @@ Then open your browser to `http://127.0.0.1:5000/` to access the interactive cal
 While the Web GUI provides the most comprehensive interface, you can use the core calculator directly for specific calculations:
 
 ```python
-# Note: Direct import assumes advanced_calculator.py is in the Python path
-from advanced_calculator import AdvancedCalculator
+# Example assuming your script is outside the src/ directory
+# or src/ is in your PYTHONPATH
+from src.calculator_app.calculator import AdvancedCalculator
 
 # Initialize the advanced calculator
 adv_calc = AdvancedCalculator()
@@ -104,16 +106,16 @@ print(f"Scaling Strategy: {scaling_info['recommended_strategy']}")
 print(f"Required GPUs: {scaling_info['num_gpus_required']}")
 
 # Note: Throughput and latency calculations are more complex and typically
-# handled within the Web GUI (app.py) which incorporates efficiency factors
+# handled within the Web GUI (src/calculator_app/web_app.py) which incorporates efficiency factors
 # and GPU performance data. Direct calculation requires providing GPU TFLOPS
 # and efficiency estimates.
 ```
 
 ### Using Predefined Models & GPUs
 
-Predefined model architectures and GPU specifications are primarily utilized by the **Web GUI** (`app.py`). The GUI fetches configurations from helper modules (`src/advanced_calculator/modules/models.py`, `src/advanced_calculator/modules/gpus.py`) and uses them for calculations and analysis.
+Predefined model architectures and GPU specifications are primarily utilized by the **Web GUI** (`src/calculator_app/web_app.py`). The GUI logic itself contains or imports these configurations (potentially from helper modules within `src/calculator_app/` if refactored).
 
-Directly accessing these predefined configurations in a script would involve importing functions from `app.py` or the respective modules if needed, which is less common for typical usage.
+Directly accessing these predefined configurations in a script would involve importing functions from `src.calculator_app.web_app` or the respective modules if needed, which is less common for typical usage.
 
 ## Calculation Approaches and Assumptions
 
@@ -209,20 +211,20 @@ See the `examples/` directory and the Web GUI for demonstrations.
 
 ## Project Structure
 
-- `app.py` - Flask application for the Web GUI interface. Contains API endpoints.
-- `advanced_calculator.py` - Core calculation logic for FLOPs, VRAM, and scaling.
+- `src/`
+  - `calculator_app/` - Main Python package for the calculator.
+    - `__init__.py` - Package marker.
+    - `web_app.py` - Flask application for the Web GUI interface. Contains API endpoints and potentially helper modules.
+    - `calculator.py` - Core calculation logic for FLOPs, VRAM, and scaling.
+    - `modules/` (Optional/Potential) - Could contain helper modules for models, GPUs, utils if refactored out of `web_app.py`.
 - `templates/` - HTML templates for web GUI.
 - `static/` - Static assets (CSS, JS) for web GUI.
-- `src/`
-  - `advanced_calculator/`
-    - `modules/` - Helper modules (used primarily by `app.py`)
-      - `models.py` - Predefined model architectures database.
-      - `gpus.py` - Predefined GPU configurations database.
-      - `utils.py` - Shared utilities (potentially).
 - `tests/` - Unit and integration tests.
 - `docs/` - Documentation files (`assumptions.md`, `metrics_calculation.md`).
 - `examples/` - Example scripts and notebooks.
 - `requirements.txt` - Python package dependencies.
+- `setup.py` - Python package setup script.
+- `.gitignore` - Git ignore file.
 - `README.md` - This file.
 - `README_WEB_GUI.md` - Detailed information about the Web GUI.
 
