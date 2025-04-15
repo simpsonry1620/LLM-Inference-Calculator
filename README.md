@@ -66,7 +66,7 @@ The easiest way to use the calculator is through the web interface:
 
 ```
 # Make sure you are in the project root directory
-python -m src.calculator_app.web_app
+python -m src.advanced_calculator.run_web
 ```
 
 Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator.
@@ -82,7 +82,7 @@ While the Web GUI provides the most comprehensive interface, you can use the cor
 ```python
 # Example assuming your script is outside the src/ directory
 # or src/ is in your PYTHONPATH
-from src.calculator_app.calculator import AdvancedCalculator
+from src.advanced_calculator import AdvancedCalculator
 
 # Initialize the advanced calculator
 adv_calc = AdvancedCalculator()

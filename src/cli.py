@@ -161,7 +161,8 @@ def main():
         results_text = format_results_text(results, args)
         print(results_text)
         logging.info(f"Calculation results (Text):\\n{results_text}")
-
+    
+    print(f"\nCalculation results have been logged to: logs/calculations/")
     logging.info("Finished CLI calculation.")
 
 

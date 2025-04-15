@@ -3,8 +3,37 @@ description:
 globs: 
 alwaysApply: true
 ---
+---
+description: Always reference the project structure documentation before making changes
+globs: ["**/*.py", "**/*.js", "**/*.html", "**/*.md"]
+alwaysApply: true
+---
 
-# Your rule content
+# Project Structure Reference Rule
 
-- You can @ files here
-- You can use markdown but dont have to
+@docs/project_structure.md
+
+## Always Check Project Structure Documentation Before Making Changes
+
+Before making any changes to the project structure or functionality, you MUST review the project structure documentation. This documentation provides a comprehensive overview of:
+
+1. The entire project organization and component relationships
+2. Purpose and functionality of each module and file
+3. Usage patterns and examples for different components
+4. Dependencies between different parts of the system
+
+This rule ensures that all modifications maintain consistency with the existing architecture and design principles.
+
+## Guidelines
+
+- Any new files or directories should follow the established naming conventions
+- New functionality should be placed in the appropriate modules
+- When modifying existing code, ensure the changes align with the component's documented purpose
+- When suggesting changes that affect multiple components, refer to the structure document for dependency identification
+
+## Important Areas to Check
+
+- Core calculator logic in `src/calculator.py` and `src/advanced_calculator/main.py`
+- Specialized calculation modules in `src/advanced_calculator/modules/`
+- Web interface in `src/advanced_calculator/web/`
+- Template files in `templates/`

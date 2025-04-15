@@ -2,6 +2,9 @@
 LLM scaling calculator for infrastructure estimation.
 """
 import numpy as np
+import os
+import json
+import datetime
 
 
 class LLMScalingCalculator:
@@ -136,7 +139,7 @@ class LLMScalingCalculator:
             model_size_params, batch_size, sequence_length, tokens_to_train
         )
         
-        return {
+        results = {
             "memory_requirements": memory_reqs,
             "compute_requirements": compute_reqs,
             "summary": {
@@ -145,4 +148,53 @@ class LLMScalingCalculator:
                 "training_days": compute_reqs["training_days"],
                 "training_cost_usd": compute_reqs["training_cost_usd"]
             }
-        } 
+        }
+        
+        # Log the calculation results to JSON file
+        self._log_calculation_to_json(results, model_size_params, batch_size, sequence_length, tokens_to_train)
+        
+        return results
+
+    def _log_calculation_to_json(self, results, model_size_params, batch_size, sequence_length, tokens_to_train):
+        """
+        Log calculation results to a JSON file in logs/calculations/ directory.
+        
+        Args:
+            results: The calculation results dictionary
+            model_size_params: Number of model parameters
+            batch_size: Training batch size
+            sequence_length: Sequence length for training
+            tokens_to_train: Total tokens to train on
+        """
+        # Create logs/calculations directory if it doesn't exist
+        log_dir = os.path.join("logs", "calculations")
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # Generate timestamp for the filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create a descriptive filename
+        model_size_b = model_size_params / 1e9
+        filename = f"llm_calc_{model_size_b:.1f}B_batch{batch_size}_seq{sequence_length}_{timestamp}.json"
+        
+        # Full file path
+        file_path = os.path.join(log_dir, filename)
+        
+        # Add metadata to the results
+        log_data = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "input_parameters": {
+                "model_size_params": model_size_params,
+                "batch_size": batch_size,
+                "sequence_length": sequence_length,
+                "tokens_to_train": tokens_to_train,
+                "gpu_memory_gb": self.gpu_memory_gb,
+                "gpu_flops": self.gpu_flops,
+                "gpu_cost_per_hour": self.gpu_cost_per_hour
+            },
+            "results": results
+        }
+        
+        # Write the results to the JSON file
+        with open(file_path, "w") as f:
+            json.dump(log_data, f, indent=2) 
