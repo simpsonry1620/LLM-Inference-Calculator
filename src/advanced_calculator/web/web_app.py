@@ -219,6 +219,26 @@ def create_app():
                 # Ensure we have properly structured data for both per_gpu and system_wide calculations
                 # Frontend should not need to perform any calculations
                 if "vram" in analysis:
+                    # Initialize all expected VRAM properties with default values
+                    analysis["vram"] = analysis.get("vram", {})
+                    analysis["vram"]["model_base"] = 0
+                    analysis["vram"]["kv_cache_base"] = 0
+                    analysis["vram"]["activations_base"] = 0
+                    analysis["vram"]["model_with_overhead"] = 0
+                    analysis["vram"]["kv_cache_with_overhead"] = 0
+                    analysis["vram"]["activations_with_overhead"] = 0
+                    analysis["vram"]["total_base"] = 0
+                    analysis["vram"]["total_with_component_overhead"] = 0
+                    analysis["vram"]["total_system_wide"] = 0
+                    analysis["vram"]["model_per_gpu"] = 0
+                    analysis["vram"]["kv_cache_per_gpu"] = 0
+                    analysis["vram"]["activations_per_gpu"] = 0
+                    analysis["vram"]["model_per_gpu_with_overhead"] = 0
+                    analysis["vram"]["kv_cache_per_gpu_with_overhead"] = 0
+                    analysis["vram"]["activations_per_gpu_with_overhead"] = 0
+                    analysis["vram"]["total_base_per_gpu"] = 0
+                    analysis["vram"]["total_per_gpu_with_component_overhead"] = 0
+                
                     # Calculate pre-computed totals before applying system overhead
                     if isinstance(analysis["vram"].get("model"), dict):
                         # Structure from dictionary return type
@@ -320,27 +340,50 @@ def create_app():
             data = request.json
             app.logger.info(f"Model scaling analysis request: {data}")
             
-            # Extract request parameters
-            base_hidden_dim = int(data.get('base_hidden_dim', 0))
-            base_ff_dim = int(data.get('base_ff_dim', 0))
-            base_num_layers = int(data.get('base_num_layers', 0))
-            base_vocab_size = int(data.get('base_vocab_size', 0))
-            base_seq_length = int(data.get('base_seq_length', 2048))
-            gpu_vram_gb = float(data.get('gpu_vram_gb', 80.0))
+            # Extract request parameters - handle both direct parameters and nested objects
+            model_config = data.get('model_config', {})
+            gpu_config = data.get('gpu_config', {})
+            
+            # Get parameters from either nested objects or direct properties
+            hidden_dim = int(model_config.get('hidden_dim', data.get('base_hidden_dim', 0)))
+            ff_dim = int(model_config.get('ff_dim', data.get('base_ff_dim', 0)))
+            num_layers = int(model_config.get('num_layers', data.get('base_num_layers', 0)))
+            vocab_size = int(model_config.get('vocab_size', data.get('base_vocab_size', 0)))
+            seq_length = int(model_config.get('seq_len', data.get('sequence_length', data.get('base_seq_length', 2048))))
+            
+            # GPU parameters
+            gpu_vram_gb = float(gpu_config.get('vram', data.get('gpu_vram_gb', 80.0)))
             batch_size = int(data.get('batch_size', 1))
             precision = data.get('precision', 'fp16')
+            
+            app.logger.info(f"Parsed model parameters: hidden_dim={hidden_dim}, ff_dim={ff_dim}, num_layers={num_layers}, vocab_size={vocab_size}, seq_length={seq_length}")
+            app.logger.info(f"Parsed GPU parameters: vram={gpu_vram_gb}, batch_size={batch_size}, precision={precision}")
             
             # Use the determine_model_scaling method from calculator
             scaling_result = calculator.determine_model_scaling(
                 gpu_vram_gb=gpu_vram_gb,
                 batch_size=batch_size,
-                sequence_length=base_seq_length,
-                hidden_dimensions=base_hidden_dim,
-                feedforward_dimensions=base_ff_dim,
-                num_layers=base_num_layers,
-                vocab_size=base_vocab_size,
+                sequence_length=seq_length,
+                hidden_dimensions=hidden_dim,
+                feedforward_dimensions=ff_dim,
+                num_layers=num_layers,
+                vocab_size=vocab_size,
                 precision=precision
             )
+            
+            # Add safe defaults for any missing fields
+            if scaling_result is None:
+                scaling_result = {}
+            
+            # Ensure all expected fields exist
+            scaling_result.setdefault('total_vram_required_gb', None)
+            scaling_result.setdefault('gpu_vram_capacity_gb', gpu_vram_gb)
+            scaling_result.setdefault('fits_on_single_gpu', False)
+            scaling_result.setdefault('num_gpus_required', None)
+            scaling_result.setdefault('recommended_strategy', None)
+            
+            if 'scaling_details' not in scaling_result:
+                scaling_result['scaling_details'] = {'note': 'No detailed scaling information available'}
             
             # Log the analysis
             log_dir = "logs/model_scaling"
@@ -362,7 +405,15 @@ def create_app():
                 
         except Exception as e:
             app.logger.error(f"Error in model scaling analysis endpoint: {str(e)}")
-            return jsonify({"error": str(e)}), 500
+            return jsonify({
+                "error": str(e),
+                "total_vram_required_gb": None,
+                "gpu_vram_capacity_gb": None,
+                "fits_on_single_gpu": False,
+                "num_gpus_required": None,
+                "recommended_strategy": None,
+                "scaling_details": {"note": f"Analysis failed: {str(e)}"}
+            }), 200  # Return 200 with error details in the response body
 
     @app.route('/api/gpu_configs', methods=['GET'])
     def gpu_configs():

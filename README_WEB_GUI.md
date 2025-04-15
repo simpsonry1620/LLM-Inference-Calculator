@@ -89,8 +89,8 @@ The calculator displays comprehensive results in four categories:
 ## Implementation Details
 
 ### Backend
-- Flask web server (src/calculator_app/web_app.py)
-- Uses the AdvancedCalculator class from src/calculator_app/calculator.py for computations
+- Flask web server (src/advanced_calculator/web/web_app.py)
+- Uses the AdvancedCalculator class from src/advanced_calculator/main.py for computations
 - Dynamically loads model configurations and GPU data when available
 - RESTful API endpoints for calculation and model information
 

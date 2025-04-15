@@ -198,17 +198,22 @@ class AdvancedCalculator:
             num_layers = model_config["num_layers"]
             vocab_size = model_config["vocab_size"]
             
-            # Calculate VRAM for model weights
+            # Calculate model VRAM
             model_vram_gb = self.calculate_model_vram(
-                hidden_dim, ff_dim, num_layers, vocab_size, precision="fp16"
+                hidden_dimensions=hidden_dim,
+                feedforward_dimensions=ff_dim,
+                num_layers=num_layers,
+                vocab_size=vocab_size
             )
+            
+            min_vram_gb = model_vram_gb + min_vram_headroom_gb
         else:
-            # Direct VRAM specification
-            model_vram_gb = float(model_name_or_vram)
+            # Use directly specified VRAM requirements
+            min_vram_gb = model_name_or_vram + min_vram_headroom_gb
+            
+        # Get GPUs with sufficient VRAM
+        return get_gpus_by_min_vram(min_vram_gb)
         
-        # Get recommended GPUs
-        return get_recommended_gpu_for_model(model_vram_gb, min_vram_headroom_gb)
-    
     def analyze_model_on_gpu(self, 
                            model_name: str, 
                            gpu_name: str,
@@ -217,18 +222,18 @@ class AdvancedCalculator:
                            precision: Literal["fp16", "fp32", "bf16", "int8", "int4"] = "fp16",
                            efficiency_factor: float = 0.3) -> Dict[str, Any]:
         """
-        Analyze how a specific model would perform on a specific GPU.
+        Analyze a model's performance on a specific GPU.
         
         Args:
             model_name: Name of the predefined model
-            gpu_name: Name of the GPU to analyze on
-            sequence_length: Custom sequence length (uses model default if None)
-            batch_size: Batch size for inference
-            precision: Numerical precision for the model
-            efficiency_factor: Efficiency factor for throughput and latency calculations
+            gpu_name: Name of the GPU to analyze
+            sequence_length: Custom sequence length (uses model default if not specified)
+            batch_size: Number of sequences processed in parallel
+            precision: Data precision for inference
+            efficiency_factor: Computation efficiency factor (0-1)
             
         Returns:
-            Dictionary with comprehensive model-on-GPU analysis
+            Dictionary with detailed analysis results
             
         Raises:
             ValueError: If the model or GPU name is not recognized
@@ -237,112 +242,112 @@ class AdvancedCalculator:
         model_config = get_model_config(model_name)
         if not model_config:
             raise ValueError(f"Model '{model_name}' not recognized")
-        
+            
         # Get GPU configuration
         gpu_config = get_gpu_config(gpu_name)
         if not gpu_config:
             raise ValueError(f"GPU '{gpu_name}' not recognized")
-        
+            
+        # Check if precision is supported by the GPU
+        if precision not in gpu_config.get("supported_precisions", ["fp32"]):
+            raise ValueError(f"Precision '{precision}' not supported by {gpu_name}")
+            
         # Extract model parameters
         hidden_dim = model_config["hidden_dimensions"]
         ff_dim = model_config["feedforward_dimensions"]
         num_layers = model_config["num_layers"]
         vocab_size = model_config["vocab_size"]
-        seq_len = sequence_length if sequence_length is not None else model_config["default_seq_length"]
         
-        # Extract GPU parameters
-        gpu_vram_gb = gpu_config["vram_gb"]
-        
-        # Get appropriate TFLOPS for the selected precision
-        if precision == "fp32":
-            gpu_tflops = gpu_config["fp32_tflops"]
-        elif precision in ["fp16", "bf16"]:
-            gpu_tflops = gpu_config.get(f"{precision}_tflops", gpu_config["fp16_tflops"])
+        # Use model-specific sequence length if not specified
+        if sequence_length is None:
+            sequence_length = model_config.get("max_sequence_length", 2048)
+            
+        # Get GPU performance based on precision
+        if precision in ["fp16", "bf16"]:
+            gpu_tflops = gpu_config.get("fp16_tflops", gpu_config.get("bf16_tflops", 0))
+        elif precision == "fp32":
+            gpu_tflops = gpu_config.get("fp32_tflops", 0)
         elif precision == "int8":
-            gpu_tflops = gpu_config.get("int8_tflops", gpu_config["fp16_tflops"] * 2)
+            gpu_tflops = gpu_config.get("int8_tflops", gpu_config.get("fp16_tflops", 0) * 2)  # Estimate if not available
         elif precision == "int4":
-            gpu_tflops = gpu_config.get("int4_tflops", gpu_config["fp16_tflops"] * 4)
+            gpu_tflops = gpu_config.get("int4_tflops", gpu_config.get("fp16_tflops", 0) * 4)  # Estimate if not available
         else:
-            # Default to fp16 if precision not found
-            gpu_tflops = gpu_config["fp16_tflops"]
-        
-        # Check if GPU supports the selected precision
-        supported_precisions = [p.lower() for p in gpu_config["supported_precisions"]]
-        precision_supported = precision.lower() in supported_precisions
-        
-        # Calculate model VRAM requirements
-        model_vram = self.calculate_model_vram(
-            hidden_dim, ff_dim, num_layers, vocab_size, precision
-        )
-        
-        kv_cache_vram = self.calculate_kv_cache_vram(
-            batch_size, seq_len, hidden_dim, num_layers, precision
-        )
-        
-        total_vram = self.calculate_total_vram(
-            batch_size, seq_len, hidden_dim, ff_dim, num_layers, vocab_size, precision
-        )
-        
-        # Determine if the model fits on the GPU
-        vram_fits = total_vram <= gpu_vram_gb
-        
+            gpu_tflops = 0
+            
+        if gpu_tflops == 0:
+            raise ValueError(f"Performance data for {gpu_name} with {precision} precision not available")
+            
         # Calculate FLOPs
-        flops_prefill = self.calculate_flops_prefill(batch_size, seq_len, hidden_dim, ff_dim, num_layers)
+        flops_attention = self.calculate_flops_attention(batch_size, sequence_length, hidden_dim)
+        flops_feedforward = self.calculate_flops_feedforward(batch_size, sequence_length, hidden_dim, ff_dim)
+        flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
+        flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
         
-        # Calculate per-token FLOPs (for a single new token)
-        flops_per_token = (
-            self.calculate_flops_attention(batch_size, 1, hidden_dim) +
-            self.calculate_flops_feedforward(batch_size, 1, hidden_dim, ff_dim)
-        ) * num_layers
-        
-        # Throughput and latency with the specific GPU
-        tokens_per_second = self.estimate_inference_throughput(
-            flops_per_token, gpu_tflops, efficiency_factor
+        # Calculate VRAM requirements
+        vram_dict = self.calculate_total_vram(
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            hidden_dimensions=hidden_dim,
+            feedforward_dimensions=ff_dim,
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            precision=precision
         )
         
-        prefill_latency = self.estimate_prefill_latency(
-            flops_prefill, gpu_tflops, efficiency_factor
-        )
+        # Calculate performance metrics
+        tokens_per_second = self.estimate_inference_throughput(flops_per_token, gpu_tflops, efficiency_factor)
+        prefill_latency = self.calculate_prefill_latency(flops_prefill, gpu_tflops, efficiency_factor)
+        token_latency = self.calculate_token_latency(flops_per_token, gpu_tflops, efficiency_factor)
+        time_for_1000_tokens = token_latency * 1000
         
-        token_latency = self.estimate_token_generation_latency(
-            flops_per_token, gpu_tflops, efficiency_factor
-        )
+        # Check if model fits on GPU
+        total_vram_required = vram_dict["total"]
+        gpu_vram = gpu_config["vram_gb"]
+        fits_on_gpu = total_vram_required <= gpu_vram
         
-        # Memory bandwidth utilization estimation (simplified)
-        # Assuming each token processing reads/writes ~3x the model size in data
-        bandwidth_required = 3 * model_vram * tokens_per_second  # GB/s
-        bandwidth_utilization = min(1.0, bandwidth_required / gpu_config["bandwidth_gb_per_sec"])
-        
-        # Return comprehensive analysis
+        # Create result dictionary
         return {
-            "model_info": model_config,
-            "gpu_info": gpu_config,
+            "model_info": {
+                "name": model_name,
+                "family": model_config.get("family", "Unknown"),
+                "parameters_b": model_config.get("parameters_billions", 0),
+                "hidden_dimensions": hidden_dim,
+                "feedforward_dimensions": ff_dim,
+                "num_layers": num_layers,
+                "vocab_size": vocab_size,
+                "description": model_config.get("description", "")
+            },
+            "gpu_info": {
+                "name": gpu_name,
+                "family": gpu_config.get("family", "Unknown"),
+                "vram_gb": gpu_vram,
+                "tflops": gpu_tflops,
+                "supported_precisions": gpu_config.get("supported_precisions", [])
+            },
             "analysis_parameters": {
-                "sequence_length": seq_len,
+                "sequence_length": sequence_length,
                 "batch_size": batch_size,
                 "precision": precision,
-                "precision_supported": precision_supported,
                 "efficiency_factor": efficiency_factor
             },
-            "compatibility": {
-                "vram_required": total_vram,
-                "vram_available": gpu_vram_gb,
-                "vram_fits": vram_fits,
-                "vram_headroom_gb": max(0, gpu_vram_gb - total_vram) if vram_fits else 0,
-                "maximum_batch_size": min(
-                    gpu_config["max_batch_size"],
-                    int((gpu_vram_gb - model_vram) / kv_cache_vram) if kv_cache_vram > 0 else float('inf')
-                ),
-                "maximum_sequence_length": int(
-                    seq_len * (gpu_vram_gb - model_vram) / kv_cache_vram
-                ) if kv_cache_vram > 0 and vram_fits else 0
+            "flops": {
+                "attention": flops_attention,
+                "feedforward": flops_feedforward,
+                "prefill_total": flops_prefill,
+                "per_token": flops_per_token
             },
+            "vram": vram_dict,
             "performance": {
                 "tokens_per_second": tokens_per_second,
                 "prefill_latency": prefill_latency,
                 "token_latency": token_latency,
-                "time_for_1000_tokens": token_latency * 1000,
-                "bandwidth_utilization": bandwidth_utilization
+                "time_for_1000_tokens": time_for_1000_tokens
+            },
+            "compatibility": {
+                "fits_on_gpu": fits_on_gpu,
+                "vram_utilization_pct": (total_vram_required / gpu_vram) * 100 if gpu_vram > 0 else float('inf'),
+                "headroom_gb": gpu_vram - total_vram_required if fits_on_gpu else 0,
+                "minimum_required_vram_gb": total_vram_required
             }
         }
     
@@ -354,19 +359,18 @@ class AdvancedCalculator:
                              gpu_tflops: float = 312.0,  # A100 defaults
                              efficiency_factor: float = 0.3) -> Dict[str, Any]:
         """
-        Perform a comprehensive analysis of a predefined model.
+        Analyze a predefined model.
         
         Args:
-            model_name: Name of the predefined model to analyze
-            sequence_length: Custom sequence length (uses model default if None)
-            batch_size: Batch size for inference
-            precision: Numerical precision for the model
+            model_name: Name of the predefined model
+            sequence_length: Custom sequence length (uses model default if not specified)
+            batch_size: Number of sequences processed in parallel
+            precision: Data precision for inference
             gpu_tflops: GPU throughput in TFLOPS
-            efficiency_factor: Efficiency factor for throughput and latency calculations
+            efficiency_factor: Computation efficiency factor (0-1)
             
         Returns:
-            Dictionary with comprehensive model analysis results,
-            or None if the model was not found
+            Dictionary with detailed analysis results
             
         Raises:
             ValueError: If the model name is not recognized
@@ -374,66 +378,58 @@ class AdvancedCalculator:
         # Get model configuration
         model_config = get_model_config(model_name)
         if not model_config:
-            raise ValueError(f"Model '{model_name}' not recognized. Use get_available_models() to see options.")
-        
+            raise ValueError(f"Model '{model_name}' not recognized")
+            
         # Extract model parameters
         hidden_dim = model_config["hidden_dimensions"]
         ff_dim = model_config["feedforward_dimensions"]
         num_layers = model_config["num_layers"]
         vocab_size = model_config["vocab_size"]
-        seq_len = sequence_length if sequence_length is not None else model_config["default_seq_length"]
         
-        # FLOPs calculations
-        flops_attention = self.calculate_flops_attention(batch_size, seq_len, hidden_dim)
-        flops_feedforward = self.calculate_flops_feedforward(batch_size, seq_len, hidden_dim, ff_dim)
-        flops_prefill = self.calculate_flops_prefill(batch_size, seq_len, hidden_dim, ff_dim, num_layers)
+        # Use model-specific sequence length if not specified
+        if sequence_length is None:
+            sequence_length = model_config.get("max_sequence_length", 2048)
+            
+        # Calculate FLOPs
+        flops_attention = self.calculate_flops_attention(batch_size, sequence_length, hidden_dim)
+        flops_feedforward = self.calculate_flops_feedforward(batch_size, sequence_length, hidden_dim, ff_dim)
+        flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
+        flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
         
-        # Calculate per-token FLOPs (for a single new token)
-        flops_per_token = (
-            self.calculate_flops_attention(batch_size, 1, hidden_dim) +
-            self.calculate_flops_feedforward(batch_size, 1, hidden_dim, ff_dim)
-        ) * num_layers
-        
-        # VRAM calculations
-        model_vram = self.calculate_model_vram(
-            hidden_dim, ff_dim, num_layers, vocab_size, precision
+        # Calculate VRAM requirements
+        vram_dict = self.calculate_total_vram(
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            hidden_dimensions=hidden_dim,
+            feedforward_dimensions=ff_dim,
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            precision=precision
         )
         
-        kv_cache_vram = self.calculate_kv_cache_vram(
-            batch_size, seq_len, hidden_dim, num_layers, precision
-        )
+        # Calculate performance metrics
+        tokens_per_second = self.estimate_inference_throughput(flops_per_token, gpu_tflops, efficiency_factor)
+        prefill_latency = self.calculate_prefill_latency(flops_prefill, gpu_tflops, efficiency_factor)
+        token_latency = self.calculate_token_latency(flops_per_token, gpu_tflops, efficiency_factor)
+        time_for_1000_tokens = token_latency * 1000
         
-        total_vram = self.calculate_total_vram(
-            batch_size, seq_len, hidden_dim, ff_dim, num_layers, vocab_size, precision
-        )
+        # Calculate throughput on different GPUs
+        throughput_by_gpu = self.calculate_throughput_across_gpus(flops_per_token, efficiency_factor)
         
-        # Throughput and latency
-        tokens_per_second = self.estimate_inference_throughput(
-            flops_per_token, gpu_tflops, efficiency_factor
-        )
-        
-        prefill_latency = self.estimate_prefill_latency(
-            flops_prefill, gpu_tflops, efficiency_factor
-        )
-        
-        token_latency = self.estimate_token_generation_latency(
-            flops_per_token, gpu_tflops, efficiency_factor
-        )
-        
-        # Compare vs lower and higher-end GPUS
-        throughput_values = {
-            "A100": self.estimate_inference_throughput(flops_per_token, 312.0, efficiency_factor),
-            "H100": self.estimate_inference_throughput(flops_per_token, 756.0, efficiency_factor),
-            "H200": self.estimate_inference_throughput(flops_per_token, 989.0, efficiency_factor),
-            "RTX 4090": self.estimate_inference_throughput(flops_per_token, 82.6, efficiency_factor),
-            "RTX 3090": self.estimate_inference_throughput(flops_per_token, 35.6, efficiency_factor)
-        }
-        
-        # Return comprehensive results
+        # Create result dictionary
         return {
-            "model_info": model_config,
+            "model_info": {
+                "name": model_name,
+                "family": model_config.get("family", "Unknown"),
+                "parameters_b": model_config.get("parameters_billions", 0),
+                "hidden_dimensions": hidden_dim,
+                "feedforward_dimensions": ff_dim,
+                "num_layers": num_layers,
+                "vocab_size": vocab_size,
+                "description": model_config.get("description", "")
+            },
             "analysis_parameters": {
-                "sequence_length": seq_len,
+                "sequence_length": sequence_length,
                 "batch_size": batch_size,
                 "precision": precision,
                 "gpu_tflops": gpu_tflops,
@@ -446,305 +442,186 @@ class AdvancedCalculator:
                 "per_token": flops_per_token
             },
             "vram": {
-                "model_weights": model_vram,
-                "kv_cache": kv_cache_vram,
-                "total": total_vram
+                "model_weights": vram_dict["model_weights"],
+                "kv_cache": vram_dict["kv_cache"],
+                "activations": vram_dict.get("activations", 0),
+                "total": vram_dict["total"]
             },
             "performance": {
                 "tokens_per_second": tokens_per_second,
                 "prefill_latency": prefill_latency,
                 "token_latency": token_latency,
-                "time_for_1000_tokens": token_latency * 1000,
-                "throughput_by_gpu": throughput_values
+                "time_for_1000_tokens": time_for_1000_tokens,
+                "throughput_by_gpu": throughput_by_gpu
             }
         }
     
-    # FLOPs calculation methods
+    # Direct module methods with delegated implementation
+    
+    # FLOPs calculations
     def calculate_flops_attention(self, batch_size: int, sequence_length: int, hidden_dimensions: int) -> int:
-        """
-        Calculate FLOPs for attention mechanism.
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            
-        Returns:
-            Estimated FLOPs for attention computation
-        """
+        """Delegate to FLOPsCalculator.calculate_attention"""
         return self._flops.calculate_attention(batch_size, sequence_length, hidden_dimensions)
     
     def calculate_flops_feedforward(self, batch_size: int, sequence_length: int, 
-                                   hidden_dimensions: int, feedforward_dimensions: int) -> int:
-        """
-        Calculate FLOPs for feedforward operations.
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            feedforward_dimensions: Size of feedforward network dimensions
-            
-        Returns:
-            Estimated FLOPs for feedforward computation
-        """
-        return self._flops.calculate_feedforward(
-            batch_size, sequence_length, hidden_dimensions, feedforward_dimensions
-        )
+                               hidden_dimensions: int, feedforward_dimensions: int) -> int:
+        """Delegate to FLOPsCalculator.calculate_feedforward"""
+        return self._flops.calculate_feedforward(batch_size, sequence_length, 
+                                         hidden_dimensions, feedforward_dimensions)
     
     def calculate_flops_prefill(self, batch_size: int, sequence_length: int, 
-                               hidden_dimensions: int, feedforward_dimensions: int, 
-                               num_layers: int) -> int:
-        """
-        Calculate total FLOPs for prefill phase (processing full context).
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            feedforward_dimensions: Size of feedforward network dimensions
-            num_layers: Number of transformer layers
-            
-        Returns:
-            Estimated total FLOPs for prefill computation
-        """
-        return self._flops.calculate_prefill(
-            batch_size, sequence_length, hidden_dimensions, feedforward_dimensions, num_layers
-        )
+                           hidden_dimensions: int, feedforward_dimensions: int, 
+                           num_layers: int) -> int:
+        """Delegate to FLOPsCalculator.calculate_prefill"""
+        return self._flops.calculate_prefill(batch_size, sequence_length, 
+                                    hidden_dimensions, feedforward_dimensions, num_layers)
     
-    # VRAM calculation methods
+    def calculate_flops_per_token(self, batch_size: int, hidden_dimensions: int,
+                            feedforward_dimensions: int, num_layers: int) -> int:
+        """Delegate to FLOPsCalculator.calculate_flops_per_token"""
+        return self._flops.calculate_flops_per_token(batch_size, hidden_dimensions,
+                                             feedforward_dimensions, num_layers)
+    
+    # VRAM calculations
     def calculate_model_vram(self, 
-                            hidden_dimensions: int, 
-                            feedforward_dimensions: int, 
-                            num_layers: int,
-                            vocab_size: int,
-                            precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                            overhead_factor: float = 1.0) -> float:
-        """
-        Calculate VRAM required for model weights.
-        
-        Args:
-            hidden_dimensions: Size of hidden dimensions in the model
-            feedforward_dimensions: Size of feedforward network dimensions
-            num_layers: Number of transformer layers
-            vocab_size: Size of vocabulary for embeddings
-            precision: Data precision (fp16=2 bytes, bf16=2 bytes, fp32=4 bytes)
-            overhead_factor: Multiplicative factor to account for runtime overhead
-            
-        Returns:
-            VRAM size in gigabytes (GB)
-        """
+                        hidden_dimensions: int, 
+                        feedforward_dimensions: int, 
+                        num_layers: int,
+                        vocab_size: int,
+                        precision: Literal["fp16", "fp32", "bf16"] = "fp16",
+                        overhead_factor: float = 1.0) -> float:
+        """Delegate to VRAMCalculator.calculate_model_vram"""
         return self._vram.calculate_model_vram(
-            hidden_dimensions, feedforward_dimensions, num_layers, 
+            hidden_dimensions, feedforward_dimensions, num_layers,
             vocab_size, precision, overhead_factor
         )
     
     def calculate_kv_cache_vram(self,
+                          batch_size: int,
+                          sequence_length: int,
+                          hidden_dimensions: int,
+                          num_layers: int,
+                          precision: Literal["fp16", "fp32", "bf16"] = "fp16",
+                          overhead_factor: float = 1.0) -> float:
+        """Delegate to VRAMCalculator.calculate_kv_cache_vram"""
+        return self._vram.calculate_kv_cache_vram(
+            batch_size, sequence_length, hidden_dimensions,
+            num_layers, precision, overhead_factor
+        )
+    
+    def calculate_activations_vram(self,
                               batch_size: int,
                               sequence_length: int,
                               hidden_dimensions: int,
                               num_layers: int,
                               precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                              overhead_factor: float = 1.0) -> float:
-        """
-        Calculate VRAM required for KV (Key-Value) cache during inference.
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            num_layers: Number of transformer layers
-            precision: Data precision
-            overhead_factor: Multiplicative factor for memory alignment and padding
-            
-        Returns:
-            KV cache VRAM size in gigabytes (GB)
-        """
-        return self._vram.calculate_kv_cache_vram(
-            batch_size, sequence_length, hidden_dimensions, 
-            num_layers, precision, overhead_factor
-        )
-    
-    def calculate_activations_vram(self,
-                                  batch_size: int,
-                                  sequence_length: int,
-                                  hidden_dimensions: int,
-                                  num_layers: int,
-                                  precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                                  overhead_factor: float = 1.1) -> float:
-        """
-        Calculate peak VRAM required for activations during inference.
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            num_layers: Number of transformer layers
-            precision: Data precision
-            overhead_factor: Multiplicative factor to account for runtime overhead
-            
-        Returns:
-            Peak activations VRAM size in gigabytes (GB)
-        """
+                              overhead_factor: float = 1.1) -> float:
+        """Delegate to VRAMCalculator.calculate_activations_vram"""
         return self._vram.calculate_activations_vram(
-            batch_size, sequence_length, hidden_dimensions, 
+            batch_size, sequence_length, hidden_dimensions,
             num_layers, precision, overhead_factor
         )
     
     def calculate_total_vram(self,
-                           batch_size: int,
-                           sequence_length: int,
-                           hidden_dimensions: int,
-                           feedforward_dimensions: int,
-                           num_layers: int,
-                           vocab_size: int,
-                           precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                           weights_overhead: float = 1.05,
-                           kv_cache_overhead: float = 1.05,
-                           activations_overhead: float = 1.1,
-                           system_overhead: float = 1.05) -> Dict[str, float]:
-        """
-        Calculate total VRAM required for model inference.
-        
-        Args:
-            batch_size: Number of sequences processed in parallel
-            sequence_length: Length of input sequences in tokens
-            hidden_dimensions: Size of hidden dimensions in the model
-            feedforward_dimensions: Size of feedforward network dimensions
-            num_layers: Number of transformer layers
-            vocab_size: Size of vocabulary for embeddings
-            precision: Data precision
-            weights_overhead, kv_cache_overhead, activations_overhead, system_overhead:
-                Overhead factors for different components
-            
-        Returns:
-            Dictionary containing detailed breakdown of VRAM requirements:
-            - Base values for each component
-            - Values with component-specific overheads
-            - Subtotal before system overhead
-            - Final total with all overheads applied
-        """
+                       batch_size: int,
+                       sequence_length: int,
+                       hidden_dimensions: int,
+                       feedforward_dimensions: int,
+                       num_layers: int,
+                       vocab_size: int,
+                       precision: Literal["fp16", "fp32", "bf16"] = "fp16",
+                       weights_overhead: float = 1.05,
+                       kv_cache_overhead: float = 1.05,
+                       activations_overhead: float = 1.1,
+                       system_overhead: float = 1.05) -> Dict[str, float]:
+        """Delegate to VRAMCalculator.calculate_total_vram"""
         return self._vram.calculate_total_vram(
-            batch_size, sequence_length, hidden_dimensions, num_layers,
-            precision, weights_overhead, activations_overhead, system_overhead
+            batch_size, sequence_length, hidden_dimensions, feedforward_dimensions,
+            num_layers, vocab_size, precision, weights_overhead,
+            kv_cache_overhead, activations_overhead, system_overhead
         )
     
-    # Throughput calculation methods
+    # Throughput calculations
     def estimate_inference_throughput(self, 
-                                     flops_per_token: int, 
-                                     gpu_tflops: float, 
-                                     efficiency_factor: float = 0.3) -> float:
-        """
-        Estimate inference throughput in tokens per second.
-        
-        Args:
-            flops_per_token: Number of FLOPs required to generate a token
-            gpu_tflops: GPU throughput in TFLOPS (fp16/bf16)
-            efficiency_factor: Efficiency factor for real-world performance
-            
-        Returns:
-            Estimated tokens per second
-        """
+                                 flops_per_token: int, 
+                                 gpu_tflops: float, 
+                                 efficiency_factor: float = 0.3) -> float:
+        """Delegate to ThroughputCalculator.estimate_inference_throughput"""
         return self._throughput.estimate_inference_throughput(
             flops_per_token, gpu_tflops, efficiency_factor
         )
     
     def estimate_batch_throughput(self,
-                                 batch_size: int,
-                                 flops_per_token: int,
-                                 gpu_tflops: float,
-                                 num_gpus: int = 1,
-                                 parallel_efficiency: float = 0.9,
-                                 compute_efficiency: float = 0.3) -> Dict[str, Any]:
-        """
-        Estimate batch processing throughput for multiple GPUs.
-        
-        Args:
-            batch_size: Batch size for processing
-            flops_per_token: FLOPs required per token
-            gpu_tflops: Single GPU throughput in TFLOPS
-            num_gpus: Number of GPUs used for inference
-            parallel_efficiency: Efficiency of parallelization (0-1)
-            compute_efficiency: GPU compute efficiency (0-1)
-            
-        Returns:
-            Dictionary with throughput metrics
-        """
+                             batch_size: int,
+                             flops_per_token: int,
+                             gpu_tflops: float,
+                             num_gpus: int = 1,
+                             parallel_efficiency: float = 0.9,
+                             compute_efficiency: float = 0.3) -> Dict[str, Any]:
+        """Delegate to ThroughputCalculator.estimate_batch_throughput"""
         return self._throughput.estimate_batch_throughput(
-            batch_size, flops_per_token, gpu_tflops, 
+            batch_size, flops_per_token, gpu_tflops,
             num_gpus, parallel_efficiency, compute_efficiency
         )
     
-    # Latency calculation methods
-    def estimate_prefill_latency(self,
+    def calculate_throughput_across_gpus(self,
+                                      flops_per_token: int,
+                                      efficiency_factor: float = 0.3) -> Dict[str, float]:
+        """Delegate to ThroughputCalculator.calculate_throughput_across_gpus"""
+        return self._throughput.calculate_throughput_across_gpus(
+            flops_per_token, efficiency_factor
+        )
+    
+    # Latency calculations
+    def calculate_prefill_latency(self,
                                flops_prefill: int,
                                gpu_tflops: float,
                                efficiency_factor: float = 0.3) -> float:
-        """
-        Estimate prefill phase latency in seconds.
-        
-        Args:
-            flops_prefill: Total FLOPs for the prefill phase
-            gpu_tflops: GPU throughput in TFLOPS (fp16/bf16)
-            efficiency_factor: Efficiency factor for real-world performance
-            
-        Returns:
-            Estimated prefill latency in seconds
-        """
-        return self._latency.estimate_prefill_latency(
+        """Delegate to LatencyCalculator.calculate_prefill_latency"""
+        return self._latency.calculate_prefill_latency(
             flops_prefill, gpu_tflops, efficiency_factor
         )
     
-    def estimate_token_generation_latency(self,
-                                        flops_per_token: int,
-                                        gpu_tflops: float,
-                                        efficiency_factor: float = 0.3) -> float:
-        """
-        Estimate per-token generation latency in seconds.
-        
-        Args:
-            flops_per_token: FLOPs required to generate a single token
-            gpu_tflops: GPU throughput in TFLOPS (fp16/bf16)
-            efficiency_factor: Efficiency factor for real-world performance
-            
-        Returns:
-            Estimated latency per token in seconds
-        """
-        return self._latency.estimate_token_generation_latency(
+    def calculate_token_latency(self,
+                             flops_per_token: int,
+                             gpu_tflops: float,
+                             efficiency_factor: float = 0.3) -> float:
+        """Delegate to LatencyCalculator.calculate_token_latency"""
+        return self._latency.calculate_token_latency(
             flops_per_token, gpu_tflops, efficiency_factor
         )
     
-    def estimate_completion_latency(self,
+    def calculate_completion_latency(self,
                                   prompt_length: int,
                                   output_length: int,
                                   flops_prefill: int,
                                   flops_per_token: int,
                                   gpu_tflops: float,
                                   efficiency_factor: float = 0.3) -> Dict[str, Any]:
-        """
-        Estimate end-to-end completion latency including prefill and token generation.
-        
-        Args:
-            prompt_length: Length of input prompt in tokens
-            output_length: Expected output length in tokens
-            flops_prefill: Total FLOPs for prefill phase
-            flops_per_token: FLOPs per token for generation phase
-            gpu_tflops: GPU throughput in TFLOPS
-            efficiency_factor: Efficiency factor for calculations
-            
-        Returns:
-            Dictionary with latency metrics
-        """
-        return self._latency.estimate_completion_latency(
-            prompt_length, output_length, flops_prefill, 
+        """Delegate to LatencyCalculator.calculate_completion_latency"""
+        return self._latency.calculate_completion_latency(
+            prompt_length, output_length, flops_prefill,
             flops_per_token, gpu_tflops, efficiency_factor
         )
     
-    # History management methods
+    # Aliases for backward compatibility
+    
+    # FLOPs aliases
+    calculate_flops_per_token = calculate_flops_per_token
+    
+    # Throughput aliases
+    calculate_tokens_per_second = estimate_inference_throughput
+    
+    # Latency aliases
+    estimate_prefill_latency = calculate_prefill_latency
+    estimate_token_generation_latency = calculate_token_latency
+    estimate_completion_latency = calculate_completion_latency
+    
+    # History management
     def clear_history(self) -> None:
-        """Clear calculation history"""
+        """Clear calculation history."""
         self._history.clear()
     
     def get_history(self) -> List[str]:
-        """Return calculation history"""
+        """Get calculation history as a list of entries."""
         return self._history.get_entries()

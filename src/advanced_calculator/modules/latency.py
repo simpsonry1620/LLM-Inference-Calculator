@@ -14,7 +14,7 @@ class LatencyCalculator:
         """
         self._history_callback = history_callback
     
-    def estimate_prefill_latency(self,
+    def calculate_prefill_latency(self,
                                flops_prefill: int,
                                gpu_tflops: float,
                                efficiency_factor: float = 0.3) -> float:
@@ -56,10 +56,13 @@ class LatencyCalculator:
         
         return realistic_latency
     
-    def estimate_token_generation_latency(self,
-                                        flops_per_token: int,
-                                        gpu_tflops: float,
-                                        efficiency_factor: float = 0.3) -> float:
+    # Alias for backward compatibility
+    estimate_prefill_latency = calculate_prefill_latency
+    
+    def calculate_token_latency(self,
+                             flops_per_token: int,
+                             gpu_tflops: float,
+                             efficiency_factor: float = 0.3) -> float:
         """
         Estimate per-token generation latency in seconds.
         
@@ -96,7 +99,10 @@ class LatencyCalculator:
         
         return realistic_latency
     
-    def estimate_completion_latency(self,
+    # Aliases for backward compatibility
+    estimate_token_generation_latency = calculate_token_latency
+    
+    def calculate_completion_latency(self,
                                   prompt_length: int,
                                   output_length: int,
                                   flops_prefill: int,
@@ -125,12 +131,12 @@ class LatencyCalculator:
         validate_positive_number(efficiency_factor, "Efficiency factor")
         
         # Calculate prefill latency
-        prefill_latency = self.estimate_prefill_latency(
+        prefill_latency = self.calculate_prefill_latency(
             flops_prefill, gpu_tflops, efficiency_factor
         )
         
         # Calculate per-token generation latency
-        token_latency = self.estimate_token_generation_latency(
+        token_latency = self.calculate_token_latency(
             flops_per_token, gpu_tflops, efficiency_factor
         )
         
@@ -160,3 +166,6 @@ class LatencyCalculator:
             )
         
         return result
+    
+    # Alias for backward compatibility
+    estimate_completion_latency = calculate_completion_latency

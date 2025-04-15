@@ -1,5 +1,6 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from src.advanced_calculator.modules.utils import validate_positive_integer, validate_positive_number
+from src.advanced_calculator.modules.gpus import list_all_gpus, get_gpu_config
 
 class ThroughputCalculator:
     """
@@ -53,6 +54,77 @@ class ThroughputCalculator:
             )
         
         return realistic_tokens_per_second
+    
+    def estimate_prefill_latency(self,
+                               flops_prefill: int,
+                               gpu_tflops: float,
+                               efficiency_factor: float = 0.3) -> float:
+        """
+        Estimate the latency for the prefill phase of inference.
+        
+        Args:
+            flops_prefill: Total FLOPs required for the prefill phase
+            gpu_tflops: GPU throughput in TFLOPS
+            efficiency_factor: Efficiency factor (0-1) for real-world performance
+            
+        Returns:
+            Estimated prefill latency in seconds
+        """
+        validate_positive_integer(flops_prefill, "FLOPs prefill")
+        validate_positive_number(gpu_tflops, "GPU TFLOPS")
+        validate_positive_number(efficiency_factor, "Efficiency factor")
+        
+        if efficiency_factor > 1.0:
+            raise ValueError(f"Efficiency factor must be <= 1.0, got {efficiency_factor}")
+        
+        # Convert GPU TFLOPS to FLOPS
+        gpu_flops = gpu_tflops * (10 ** 12)
+        
+        # Calculate theoretical time required
+        theoretical_time = flops_prefill / gpu_flops
+        
+        # Apply efficiency factor for realistic estimate
+        realistic_time = theoretical_time / efficiency_factor
+        
+        if self._history_callback:
+            self._history_callback(
+                f"Prefill_Latency(flops_prefill={flops_prefill}, "
+                f"gpu_tflops={gpu_tflops}, efficiency_factor={efficiency_factor}) = "
+                f"{realistic_time:.4f} seconds"
+            )
+        
+        return realistic_time
+    
+    def estimate_token_generation_latency(self,
+                                        flops_per_token: int,
+                                        gpu_tflops: float,
+                                        efficiency_factor: float = 0.3) -> float:
+        """
+        Estimate the latency for generating a single token.
+        
+        Args:
+            flops_per_token: FLOPs required to generate a single token
+            gpu_tflops: GPU throughput in TFLOPS
+            efficiency_factor: Efficiency factor (0-1) for real-world performance
+            
+        Returns:
+            Estimated token generation latency in seconds
+        """
+        # The token generation latency is simply the inverse of throughput
+        tokens_per_second = self.estimate_inference_throughput(
+            flops_per_token, gpu_tflops, efficiency_factor
+        )
+        
+        latency = 1.0 / tokens_per_second
+        
+        if self._history_callback:
+            self._history_callback(
+                f"Token_Generation_Latency(flops_per_token={flops_per_token}, "
+                f"gpu_tflops={gpu_tflops}, efficiency_factor={efficiency_factor}) = "
+                f"{latency:.6f} seconds"
+            )
+        
+        return latency
     
     def estimate_batch_throughput(self,
                                  batch_size: int,
@@ -118,3 +190,55 @@ class ThroughputCalculator:
             )
         
         return result
+        
+    def calculate_throughput_across_gpus(self,
+                                       flops_per_token: int,
+                                       efficiency_factor: float = 0.3) -> Dict[str, float]:
+        """
+        Calculate inference throughput across different GPU models.
+        
+        Args:
+            flops_per_token: FLOPs required to generate a single token
+            efficiency_factor: Efficiency factor for computation (0-1)
+            
+        Returns:
+            Dictionary mapping GPU names to estimated throughput in tokens/second
+        """
+        validate_positive_integer(flops_per_token, "FLOPs per token")
+        validate_positive_number(efficiency_factor, "Efficiency factor")
+        
+        results = {}
+        
+        # Get all available GPUs
+        gpu_names = list_all_gpus()
+        
+        # Calculate throughput for each GPU
+        for gpu_name in gpu_names:
+            gpu_config = get_gpu_config(gpu_name)
+            
+            if not gpu_config:
+                continue
+                
+            # Get TFLOPS based on the GPU architecture
+            # Prefer fp16 performance, fallback to others
+            tflops = gpu_config.get('fp16_tflops', 
+                     gpu_config.get('bf16_tflops',
+                     gpu_config.get('fp32_tflops', 0)))
+            
+            if tflops == 0:
+                continue
+                
+            # Calculate throughput
+            throughput = self.estimate_inference_throughput(
+                flops_per_token, tflops, efficiency_factor
+            )
+            
+            results[gpu_name] = throughput
+        
+        if self._history_callback:
+            message = "Throughput_Across_GPUs:\n"
+            for gpu, tps in results.items():
+                message += f"  - {gpu}: {tps:.2f} tokens/second\n"
+            self._history_callback(message)
+            
+        return results

@@ -7,10 +7,13 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         "numpy",
+        "click",
+        "tabulate",
     ],
     entry_points={
         "console_scripts": [
-            "advanced-calculator=advanced_calculator.cli:main",
+            "advanced-calculator=advanced_calculator.cli:cli",
+            "basic-calculator=advanced_calculator.cli:cli",  # For backward compatibility
         ],
     },
     python_requires=">=3.8",

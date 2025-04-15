@@ -22,7 +22,6 @@ LLM-Inference-Calculator/
 │   ├── project_structure.md   # This document
 │   └── ...                    # Additional documentation
 ├── examples/                  # Example scripts demonstrating usage
-│   ├── basic_usage.py
 │   ├── advanced_calculator_example.py
 │   └── model_comparison_example.py
 ├── logs/                      # Directory for storing calculation logs
@@ -30,14 +29,12 @@ LLM-Inference-Calculator/
 ├── src/                       # Source code
 │   ├── __init__.py
 │   ├── __main__.py            # Entry point for running as a module
-│   ├── calculator.py          # Basic calculator implementation
-│   ├── cli.py                 # Command-line interface
 │   └── advanced_calculator/   # Advanced calculator implementation
 │       ├── __init__.py
-│       ├── cli.py             # Advanced CLI
-│       ├── main.py            # Core advanced calculator implementation
+│       ├── cli.py             # Command-line interface
+│       ├── main.py            # Core calculator integration layer
 │       ├── run_web.py         # Script to run the web interface
-│       ├── README.md          # Documentation for the advanced calculator
+│       ├── README.md          # Documentation for the calculator
 │       ├── modules/           # Specialized calculator modules
 │       │   ├── __init__.py
 │       │   ├── flops.py       # FLOPs calculations
@@ -55,7 +52,6 @@ LLM-Inference-Calculator/
 │   └── visualize.html
 ├── tests/                     # Test suite
 │   ├── __init__.py
-│   ├── test_calculator.py
 │   └── test_latency.py
 ├── .dockerignore
 ├── .gitignore
@@ -68,70 +64,25 @@ LLM-Inference-Calculator/
 
 ## Core Components
 
-### Basic Calculator (`src/calculator.py`)
-
-The basic calculator provides fundamental calculations for LLM infrastructure planning:
-
-- Memory requirements estimation (`estimate_memory_requirements`)
-- Compute requirements estimation (`estimate_compute_requirements`)
-- Combined resource estimation (`estimate_resources`)
-
-Usage example:
-```python
-from src import calculator
-
-# Initialize with default A100 settings
-calc = calculator.LLMScalingCalculator()
-
-# Estimate resources for a 7B parameter model
-results = calc.estimate_resources(
-    model_size_params=7e9,  # 7 billion parameters
-    batch_size=32,
-    sequence_length=2048,
-    tokens_to_train=300e9  # 300B tokens
-)
-```
-
 ### Advanced Calculator (`src/advanced_calculator/main.py`)
 
-The advanced calculator builds on the basic functionality with detailed estimations for specific components:
+The main calculator serves as an integration layer that initializes and coordinates the specialized calculator modules:
 
-- **FLOPs Calculations**:
-  - Attention mechanism (`calculate_flops_attention`)
-  - Feedforward networks (`calculate_flops_feedforward`)
-  - Prefill phase (`calculate_flops_prefill`)
-
-- **VRAM Calculations**:
-  - Model weights (`calculate_model_vram`)
-  - KV cache (`calculate_kv_cache_vram`)
-  - Activations (`calculate_activations_vram`)
-  - Total VRAM (`calculate_total_vram`)
-
-- **Throughput and Latency**:
-  - Inference throughput (`estimate_inference_throughput`)
-  - Batch throughput (`estimate_batch_throughput`)
-  - Prefill latency (`estimate_prefill_latency`)
-  - Token generation latency (`estimate_token_generation_latency`)
-  - Completion latency (`estimate_completion_latency`)
-
-- **Model and GPU Database**:
-  - Predefined model configurations (`get_model_config`, `get_available_models`)
-  - Predefined GPU configurations (`get_gpu_config`, `get_available_gpus`)
-  - Hardware recommendations (`get_recommended_gpus_for_model`)
-
-- **Analysis Methods**:
-  - Complete model analysis on specific GPU (`analyze_model_on_gpu`)
-  - Generic model analysis by name (`analyze_model_by_name`)
+- Provides a unified API for all calculator functionalities
+- Delegates calculations to specialized modules
+- Maintains a history of calculations
+- Provides methods for working with predefined models and GPUs
+- Implements high-level analysis functions that combine multiple calculations
 
 Usage example:
 ```python
 from src.advanced_calculator import AdvancedCalculator
 
-# Initialize the advanced calculator
-adv_calc = AdvancedCalculator()
+# Initialize the calculator
+calc = AdvancedCalculator()
 
 # Calculate VRAM requirements for model weights
-model_vram = adv_calc.calculate_model_vram(
+model_vram = calc.calculate_model_vram(
     hidden_dimensions=4096,
     feedforward_dimensions=16384,
     num_layers=32,
@@ -140,7 +91,7 @@ model_vram = adv_calc.calculate_model_vram(
 )
 
 # Analyze a predefined model on a specific GPU
-analysis = adv_calc.analyze_model_on_gpu(
+analysis = calc.analyze_model_on_gpu(
     model_name="llama2-7b",
     gpu_name="a100-80gb",
     sequence_length=4096,
@@ -151,28 +102,51 @@ analysis = adv_calc.analyze_model_on_gpu(
 
 ### Specialized Modules (`src/advanced_calculator/modules/`)
 
-The advanced calculator is organized into specialized modules:
+The calculator functionality is organized into specialized modules that implement specific calculations:
 
 #### FLOPs Calculator (`flops.py`)
-Handles calculations for computational requirements of transformer operations.
+- Provides methods for calculating computational requirements
+- `calculate_attention`: FLOPs for attention mechanism
+- `calculate_feedforward`: FLOPs for feedforward networks
+- `calculate_prefill`: FLOPs for the prefill phase
+- `calculate_flops_per_token`: FLOPs for generating a single token
 
 #### VRAM Calculator (`vram.py`)
-Calculates memory requirements for different components of the model during inference.
+- Handles memory requirement calculations
+- `calculate_model_vram`: VRAM for model weights
+- `calculate_kv_cache_vram`: VRAM for KV cache
+- `calculate_activations_vram`: VRAM for activations
+- `calculate_total_vram`: Total VRAM with all components and overheads
+- `determine_model_scaling`: Multi-GPU scaling strategies
 
 #### Throughput Calculator (`throughput.py`)
-Estimates tokens per second processing capabilities.
+- Estimates inference throughput
+- `estimate_inference_throughput`: Tokens per second
+- `estimate_batch_throughput`: Batch processing performance
+- `calculate_throughput_across_gpus`: Comparison across GPU models
 
 #### Latency Calculator (`latency.py`)
-Calculates time-to-first-token and per-token generation times.
+- Handles latency estimations
+- `calculate_prefill_latency`: Time for processing prompt
+- `calculate_token_latency`: Time for generating each token
+- `calculate_completion_latency`: End-to-end completion time
 
 #### Models Database (`models.py`)
-Maintains a database of predefined model architectures with their parameters.
+- Maintains predefined model configurations
+- Parameters for popular model architectures (Llama, Mistral, etc.)
+- Methods for retrieving and filtering models
 
 #### GPUs Database (`gpus.py`)
-Maintains specifications and capabilities of different GPU models.
+- Maintains specifications for various GPUs
+- Performance characteristics (TFLOPS, bandwidth)
+- Memory capacities and supported precisions
+- Methods for filtering and selecting GPUs
 
 #### Utilities (`utils.py`)
-Provides helper functions and history tracking for calculations.
+- Provides helper functions
+- Input validation
+- History tracking
+- Common calculations
 
 ### Web Interface (`src/advanced_calculator/web/web_app.py`)
 
@@ -191,15 +165,29 @@ python -m src.advanced_calculator.run_web
 
 Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator.
 
-## Command-Line Interfaces
+## Command-Line Interface
 
-### Basic CLI (`src/cli.py`)
+### CLI (`src/advanced_calculator/cli.py`)
 
-The basic CLI provides command-line access to fundamental calculations.
+The CLI offers detailed calculations and options through the command line:
 
-### Advanced CLI (`src/advanced_calculator/cli.py`)
+- `calculate`: Calculate requirements with custom parameters
+- `analyze-model`: Analyze a predefined model
+- `list-models`: List all available predefined models
+- `list-gpus`: List all available predefined GPUs
+- `analyze-model-on-gpu`: Analyze a model on a specific GPU
+- `recommend-gpus`: Get GPU recommendations for a model
+- `filter-gpus`: Filter GPUs by criteria
 
-The advanced CLI offers more detailed calculations and options through the command line.
+To use the CLI:
+```bash
+# Install the package
+pip install -e .
+
+# Use the command-line tools
+advanced-calculator list-models
+advanced-calculator analyze-model --model-name llama2-7b
+```
 
 ## Docker Deployment
 
@@ -221,15 +209,13 @@ For easy deployment, the project includes Docker configuration:
 
 The `examples/` directory contains sample scripts demonstrating various usage patterns:
 
-- `basic_usage.py`: Simple examples using the base calculator
-- `advanced_calculator_example.py`: Examples showcasing the advanced calculator features
+- `advanced_calculator_example.py`: Examples showcasing the calculator features
 - `model_comparison_example.py`: Demonstrates how to compare different model architectures
 
 ## Tests
 
 The `tests/` directory contains the test suite for verifying calculator functionality:
 
-- `test_calculator.py`: Tests for the basic calculator functionality
 - `test_latency.py`: Tests for latency calculations
 
 ## Templates

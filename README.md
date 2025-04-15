@@ -243,11 +243,23 @@ See the `examples/` directory and the Web GUI for demonstrations.
 ## Project Structure
 
 - `src/`
-  - `calculator_app/` - Main Python package for the calculator.
-    - `__init__.py` - Package marker.
-    - `web_app.py` - Flask application for the Web GUI interface. Contains API endpoints and potentially helper modules.
-    - `calculator.py` - Core calculation logic for FLOPs, VRAM, and scaling.
-    - `modules/` (Optional/Potential) - Could contain helper modules for models, GPUs, utils if refactored out of `web_app.py`.
+  - `__init__.py` - Package marker.
+  - `__main__.py` - Entry point for running as a module.
+  - `advanced_calculator/` - Main calculator implementation
+    - `__init__.py` - Package exports
+    - `cli.py` - Command-line interface
+    - `main.py` - Core calculation logic for FLOPs, VRAM, and scaling
+    - `run_web.py` - Script to run the web interface
+    - `modules/` - Specialized calculator modules
+      - `flops.py` - FLOPs calculations
+      - `gpus.py` - GPU specifications and capabilities
+      - `latency.py` - Latency estimations
+      - `models.py` - Model architecture specifications
+      - `throughput.py` - Throughput calculations
+      - `utils.py` - Utility functions
+      - `vram.py` - Memory requirement calculations
+    - `web/` - Web interface implementation
+      - `web_app.py` - Flask web application
 - `templates/` - HTML templates for web GUI (`index.html`, `visualize.html`).
 - `static/` - Static assets (CSS, JS) for web GUI (if any added beyond CDNs).
 - `tests/` - Unit and integration tests.
