@@ -257,7 +257,7 @@ class VRAMCalculator:
                              precision: Literal["fp16", "fp32", "bf16"] = "fp16",
                              weights_overhead: float = 1.1,
                              activations_overhead: float = 1.1,
-                             system_overhead: float = 1.1) -> float:
+                             system_overhead: float = 1.1) -> Dict[str, float]:
         """
         Calculate total VRAM required for model inference.
         
@@ -277,7 +277,15 @@ class VRAMCalculator:
             system_overhead: System-level overhead factor (default: 1.1)
             
         Returns:
-            Total VRAM size in gigabytes (GB)
+            Dictionary containing:
+            - weights_base: Base size of model weights in GB
+            - kv_cache_base: Base size of KV cache in GB
+            - activations_base: Base size of activations in GB
+            - weights_with_overhead: Size of model weights with component overhead in GB
+            - kv_cache_with_overhead: Size of KV cache with component overhead in GB
+            - activations_with_overhead: Size of activations with component overhead in GB
+            - component_subtotal: Sum of all components with their component overheads in GB
+            - total: Final total with system overhead applied in GB
         """
         # Calculate base VRAM for each component without overheads
         weights_base = self.calculate_model_vram(
@@ -319,7 +327,17 @@ class VRAMCalculator:
                 f"  {total_vram:.3f} GB"
             )
         
-        return total_vram
+        # Return detailed breakdown of all values
+        return {
+            "weights_base": weights_base,
+            "kv_cache_base": kv_cache_base,
+            "activations_base": activations_base,
+            "weights_with_overhead": weights_vram,
+            "kv_cache_with_overhead": kv_cache_vram, 
+            "activations_with_overhead": activations_vram,
+            "component_subtotal": subtotal,
+            "total": total_vram
+        }
 
     def determine_model_scaling(self,
                                gpu_vram_gb: float,

@@ -21,7 +21,7 @@ This web interface provides a user-friendly way to estimate computational requir
 
 2. Run the web application from the project root directory:
    ```
-   python -m src.calculator_app.web_app
+   python -m src.advanced_calculator.run_web
    ```
 
 3. Open your browser and navigate to:
@@ -156,10 +156,18 @@ The web interface communicates with the `AdvancedCalculator` class to perform th
 
 ### Logging
 
-- All calculations performed via the Web GUI are logged to `logging/web_app_calculations.log`.
+- Calculations run via the Web GUI (`src.advanced_calculator.web.web_app`) are logged to `logging/web_app_calculations.log`.
 - This log file includes input parameters and the full JSON results.
 - The `/visualize` page reads this file (and the CLI log file) to populate the history table.
 
 1. **Visualizations**:
    - Add charts/graphs to visualize scaling relationships (Partially done on `/visualize` page)
-   - Compare multiple models side-by-side (Possible via `/visualize` page) 
+   - Compare multiple models side-by-side (Possible via `/visualize` page)
+
+# Optional arguments
+python -m src.advanced_calculator.run_web --host 0.0.0.0 --port 8080 --debug
+
+Available arguments:
+- --host: Host address to bind to (default: 127.0.0.1)
+- --port: Port to bind to (default: 5000)
+- --debug: Run in debug mode for development 

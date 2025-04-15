@@ -602,7 +602,7 @@ class AdvancedCalculator:
                            weights_overhead: float = 1.05,
                            kv_cache_overhead: float = 1.05,
                            activations_overhead: float = 1.1,
-                           system_overhead: float = 1.05) -> float:
+                           system_overhead: float = 1.05) -> Dict[str, float]:
         """
         Calculate total VRAM required for model inference.
         
@@ -618,12 +618,15 @@ class AdvancedCalculator:
                 Overhead factors for different components
             
         Returns:
-            Total VRAM size in gigabytes (GB)
+            Dictionary containing detailed breakdown of VRAM requirements:
+            - Base values for each component
+            - Values with component-specific overheads
+            - Subtotal before system overhead
+            - Final total with all overheads applied
         """
         return self._vram.calculate_total_vram(
-            batch_size, sequence_length, hidden_dimensions, feedforward_dimensions,
-            num_layers, vocab_size, precision, weights_overhead, kv_cache_overhead,
-            activations_overhead, system_overhead
+            batch_size, sequence_length, hidden_dimensions, num_layers,
+            precision, weights_overhead, activations_overhead, system_overhead
         )
     
     # Throughput calculation methods

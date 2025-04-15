@@ -215,6 +215,58 @@ def create_app():
                         efficiency_factor=efficiency_factor
                     )
                 
+                # Transform VRAM data for frontend
+                # Ensure we have properly structured data for both per_gpu and system_wide calculations
+                # Frontend should not need to perform any calculations
+                if "vram" in analysis:
+                    # Calculate pre-computed totals before applying system overhead
+                    if isinstance(analysis["vram"].get("model"), dict):
+                        # Structure from dictionary return type
+                        analysis["vram"]["model_base"] = analysis["vram"]["model"].get("weights_base", 0)
+                        analysis["vram"]["kv_cache_base"] = analysis["vram"]["model"].get("kv_cache_base", 0)
+                        analysis["vram"]["activations_base"] = analysis["vram"]["model"].get("activations_base", 0)
+                        
+                        analysis["vram"]["model_with_overhead"] = analysis["vram"]["model"].get("weights_with_overhead", 0)
+                        analysis["vram"]["kv_cache_with_overhead"] = analysis["vram"]["model"].get("kv_cache_with_overhead", 0)
+                        analysis["vram"]["activations_with_overhead"] = analysis["vram"]["model"].get("activations_with_overhead", 0)
+                        
+                        # Total before system overhead
+                        analysis["vram"]["total_base"] = (
+                            analysis["vram"]["model_base"] + 
+                            analysis["vram"]["kv_cache_base"] + 
+                            analysis["vram"]["activations_base"]
+                        )
+                        
+                        analysis["vram"]["total_with_component_overhead"] = analysis["vram"]["model"].get("component_subtotal", 0)
+                        analysis["vram"]["total_system_wide"] = analysis["vram"]["model"].get("total", 0)
+                    
+                    # Ensure we have per_gpu values properly structured too 
+                    if "model_per_gpu" in analysis["vram"]:
+                        analysis["vram"]["total_base_per_gpu"] = (
+                            analysis["vram"]["model_per_gpu"] + 
+                            analysis["vram"]["kv_cache_per_gpu"] + 
+                            analysis["vram"]["activations_per_gpu"]
+                        )
+                        
+                        # Add component overhead values if not present
+                        if "model_per_gpu_with_overhead" not in analysis["vram"] and "overheads_used" in analysis:
+                            analysis["vram"]["model_per_gpu_with_overhead"] = (
+                                analysis["vram"]["model_per_gpu"] * analysis["overheads_used"].get("weights", 1.0)
+                            )
+                            analysis["vram"]["kv_cache_per_gpu_with_overhead"] = (
+                                analysis["vram"]["kv_cache_per_gpu"] * analysis["overheads_used"].get("kv_cache", 1.0)
+                            )
+                            analysis["vram"]["activations_per_gpu_with_overhead"] = (
+                                analysis["vram"]["activations_per_gpu"] * analysis["overheads_used"].get("activations", 1.0)
+                            )
+                            
+                            # Calculate component subtotal
+                            analysis["vram"]["total_per_gpu_with_component_overhead"] = (
+                                analysis["vram"]["model_per_gpu_with_overhead"] + 
+                                analysis["vram"]["kv_cache_per_gpu_with_overhead"] +
+                                analysis["vram"]["activations_per_gpu_with_overhead"]
+                            )
+                
                 # Add calculation history
                 history = calculator.get_history()
                 
@@ -236,7 +288,13 @@ def create_app():
                 
                 # Return the analysis results and calculation history
                 return jsonify({
-                    "analysis": analysis,
+                    "model_name": data.get('model_name', 'custom'),
+                    "parameters_billions": analysis.get("parameters_billions", 0),
+                    "vram": analysis["vram"],
+                    "flops": analysis["flops"],
+                    "performance": analysis["performance"],
+                    "parallelism": analysis["parallelism"],
+                    "overheads_used": analysis["overheads_used"],
                     "history": history
                 })
                 
