@@ -364,13 +364,6 @@
                 </div>
                 
                 <div class="card">
-                    <h3>Memory Requirements</h3>
-                    <div id="memory-results">
-                        <!-- Results will be inserted here -->
-                    </div>
-                </div>
-                
-                <div class="card">
                     <h3>Computational Requirements</h3>
                     <div id="compute-results">
                         <!-- Results will be inserted here -->
@@ -381,13 +374,6 @@
                     <h3>Performance Estimates</h3>
                     <div id="performance-results">
                         <!-- Results will be inserted here -->
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h3>Model Scaling Analysis</h3>
-                    <div id="scaling-results">
-                        <!-- Scaling analysis results will be inserted here -->
                     </div>
                 </div>
             </div>
@@ -410,7 +396,6 @@
             const calculateBtn = document.getElementById('calculate-btn');
             const resultsContainer = document.getElementById('results-container');
             const modelSummary = document.getElementById('model-summary');
-            const memoryResults = document.getElementById('memory-results');
             const computeResults = document.getElementById('compute-results');
             const performanceResults = document.getElementById('performance-results');
             const loadingElement = document.getElementById('loading');
@@ -426,6 +411,9 @@
             efficiencyInput.addEventListener('input', function() {
                 efficiencyValue.textContent = `${Math.round(this.value * 100)}%`;
             });
+            
+            // Set default sequence length to 2048 on page load
+            seqLenInput.value = 2048;
             
             // Handle model preset changes
             modelPresetSelect.addEventListener('change', function() {
@@ -444,7 +432,7 @@
                 ffDimInput.value = selectedOption.getAttribute('data-ff-dim');
                 numLayersInput.value = selectedOption.getAttribute('data-num-layers');
                 vocabSizeInput.value = selectedOption.getAttribute('data-vocab-size');
-                seqLenInput.value = selectedOption.getAttribute('data-seq-len');
+                seqLenInput.value = 2048;
             });
             
             // Format numbers for display
@@ -640,83 +628,42 @@
                 .then(result => {
                     // Log the result
                     console.log('Received calculation result:', result);
+                    console.log('Inspecting VRAM data:', result.vram);
                     
                     // Hide loading
                     loadingElement.style.display = 'none';
                     
                     // Update model summary
                     modelSummary.innerHTML = `
-                        <p><strong>Model Name:</strong> ${result.model_name}</p>
-                        <p><strong>Parameters:</strong> ${result.parameters_billions} billion</p>
+                        <p><strong>Model Name:</strong> ${result.model_name || 'Custom'}</p>
+                        <p><strong>Parameters:</strong> ${result.parameters_billions || 'N/A'} billion</p>
                     `;
                     
                     // Format VRAM values consistently
                     function formatVRAM(value) {
-                        if (value === undefined || value === null || isNaN(value)) {
+                        if (value === undefined || value === null) {
                             return 'N/A';
                         }
-                        // Handle case where value is an object instead of a number
-                        if (typeof value === 'object') {
-                            // Try to get a total or component_subtotal property if it exists
-                            if (value.total !== undefined && value.total !== null) {
-                                return value.total.toFixed(2);
-                            } else if (value.component_subtotal !== undefined && value.component_subtotal !== null) {
-                                return value.component_subtotal.toFixed(2);
-                            } else {
-                                return 'N/A';
-                            }
-                        }
-                        return value.toFixed(2);
+                        // Ensure value is a number before calling toFixed
+                        return (isNaN(parseFloat(value)) ? 'N/A' : parseFloat(value).toFixed(2));
                     }
 
-                    // Update memory results - Show Per GPU and Total
-                    memoryResults.innerHTML = `
-                        <h4>VRAM Requirements (Per GPU)</h4>
-                        <table>
-                            <tr><th>Component</th><th>Base Size (GB)</th><th>With Overhead (GB)</th></tr>
-                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model_per_gpu)}</td><td>${formatVRAM(result.vram.model_per_gpu_with_overhead)}</td></tr>
-                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache_per_gpu)}</td><td>${formatVRAM(result.vram.kv_cache_per_gpu_with_overhead)}</td></tr>
-                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations_per_gpu)}</td><td>${formatVRAM(result.vram.activations_per_gpu_with_overhead)}</td></tr>
-                            <tr class="total-row">
-                                <td><strong>Total VRAM</strong></td>
-                                <td><strong>${formatVRAM(result.vram.total_base_per_gpu)}</strong></td>
-                                <td><strong>${formatVRAM(result.vram.total_per_gpu_with_component_overhead)}</strong></td>
-                            </tr>
-                        </table>
-                        <small>Overheads applied: Weights (${result.overheads_used.weights}x), KV Cache (${result.overheads_used.kv_cache}x), Activations (${result.overheads_used.activations}x), System (${result.overheads_used.system}x)</small>
-                        
-                        <br><br>
-                        <h4>VRAM Requirements (System Wide)</h4>
-                        <table>
-                            <tr><th>Component</th><th>Base Size (GB)</th><th>With Overhead (GB)</th></tr>
-                            <tr><td>Model Weights</td><td>${formatVRAM(result.vram.model_base)}</td><td>${formatVRAM(result.vram.model_with_overhead)}</td></tr>
-                            <tr><td>KV Cache</td><td>${formatVRAM(result.vram.kv_cache_base)}</td><td>${formatVRAM(result.vram.kv_cache_with_overhead)}</td></tr>
-                            <tr><td>Activations</td><td>${formatVRAM(result.vram.activations_base)}</td><td>${formatVRAM(result.vram.activations_with_overhead)}</td></tr>
-                            <tr class="total-row">
-                                <td><strong>Total VRAM</strong></td>
-                                <td><strong>${formatVRAM(result.vram.total_base)}</strong></td>
-                                <td><strong>${formatVRAM(result.vram.total_with_component_overhead)}</strong></td>
-                            </tr>
-                        </table>
-                        <small>Total with all overheads (including system): <strong>${formatVRAM(result.vram.total_system_wide)} GB</strong></small>
-                    `;
-                    
                     // Update compute results (FLOPs don't change based on parallelism display, but calculations might)
                     computeResults.innerHTML = `
                         <table>
                             <tr><th>Component</th><th>FLOPs</th></tr>
-                            <tr><td>Attention</td><td>${formatNumber(result.flops.attention)}</td></tr>
-                            <tr><td>Feedforward</td><td>${formatNumber(result.flops.feedforward)}</td></tr>
-                            <tr><td>Prefill (Full Context)</td><td>${formatNumber(result.flops.prefill)}</td></tr>
-                            <tr><td>Per Token Generation</td><td>${formatNumber(result.flops.per_token)}</td></tr>
+                            <tr><td>Attention</td><td>${formatNumber(result.flops?.attention || 0)}</td></tr>
+                            <tr><td>Feedforward</td><td>${formatNumber(result.flops?.feedforward || 0)}</td></tr>
+                            <tr><td>Prefill (Full Context)</td><td>${formatNumber(result.flops?.prefill_total || result.flops?.prefill || 0)}</td></tr>
+                            <tr><td>Per Token Generation</td><td>${formatNumber(result.flops?.per_token || 0)}</td></tr>
                         </table>
                     `;
                     
                     // Update performance results - Show parallelism details
-                    let parallelismInfo = `Strategy: ${result.parallelism.strategy}`;
-                    if (result.parallelism.strategy !== 'none') {
-                        parallelismInfo += ` (TP=${result.parallelism.tp_size}, PP=${result.parallelism.pp_size})`;
-                        parallelismInfo += `<br>Total GPUs: ${result.parallelism.num_gpus}`;
+                    let parallelismInfo = `Strategy: ${result.parallelism?.strategy || 'none'}`;
+                    if (result.parallelism && result.parallelism.strategy && result.parallelism.strategy !== 'none') {
+                        parallelismInfo += ` (TP=${result.parallelism.tp_size || 1}, PP=${result.parallelism.pp_size || 1})`;
+                        parallelismInfo += `<br>Total GPUs: ${result.parallelism.num_gpus || 1}`;
                         parallelismInfo += `<br>Total Effective TFLOPs: ${result.parallelism.effective_tflops ? result.parallelism.effective_tflops.toFixed(1) : 'N/A'}`;
                     }
 
@@ -724,15 +671,12 @@
                         <p><strong>Parallelism:</strong> ${parallelismInfo}</p>
                         <table>
                             <tr><th>Metric</th><th>Value</th></tr>
-                            <tr><td>Generation Speed (System Wide)</td><td>${result.performance.tokens_per_second ? result.performance.tokens_per_second.toFixed(2) : 'N/A'} tokens/sec</td></tr>
-                            <tr><td>Prefill Latency (Estimated)</td><td>${result.performance.prefill_latency ? formatTime(result.performance.prefill_latency) : 'N/A'}</td></tr>
-                            <tr><td>Per-Token Latency (Estimated)</td><td>${result.performance.token_latency ? formatTime(result.performance.token_latency) : 'N/A'}</td></tr>
-                            <tr><td>Time for 1000 Tokens</td><td>${result.performance.token_latency ? formatTime(result.performance.token_latency * 1000) : 'N/A'}</td></tr>
+                            <tr><td>Generation Speed (System Wide)</td><td>${result.performance?.tokens_per_second ? result.performance.tokens_per_second.toFixed(2) : 'N/A'} tokens/sec</td></tr>
+                            <tr><td>Prefill Latency (Estimated)</td><td>${result.performance?.prefill_latency ? formatTime(result.performance.prefill_latency) : 'N/A'}</td></tr>
+                            <tr><td>Per-Token Latency (Estimated)</td><td>${result.performance?.token_latency ? formatTime(result.performance.token_latency) : 'N/A'}</td></tr>
+                            <tr><td>Time for 1000 Tokens</td><td>${result.performance?.token_latency ? formatTime(result.performance.token_latency * 1000) : 'N/A'}</td></tr>
                         </table>
                     `;
-                    
-                    // After updating the other sections, perform scaling analysis
-                    performScalingAnalysis(data);
                 })
                 .catch(error => {
                     console.error('Error during calculation:', error);
@@ -741,134 +685,6 @@
                     errorElement.textContent = 'Error: ' + error.message;
                 });
             });
-
-            // Function to perform scaling analysis
-            function performScalingAnalysis(data) {
-                // Prepare data for scaling analysis
-                const selectedModelOption = modelPresetSelect.options[modelPresetSelect.selectedIndex];
-                const selectedGpuOption = gpuModelSelect.options[gpuModelSelect.selectedIndex];
-                
-                const modelConfig = {
-                    name: selectedModelOption.value,
-                    hidden_dim: parseInt(hiddenDimInput.value),
-                    ff_dim: parseInt(ffDimInput.value),
-                    num_layers: parseInt(numLayersInput.value),
-                    vocab_size: parseInt(vocabSizeInput.value),
-                    seq_len: parseInt(seqLenInput.value)
-                };
-                
-                const gpuConfig = {
-                    name: selectedGpuOption.text,
-                    vram: parseFloat(selectedGpuOption.getAttribute('data-vram')),
-                    tflops: parseFloat(gpuModelSelect.value)
-                };
-                
-                const scalingData = {
-                    model_config: modelConfig,
-                    gpu_config: gpuConfig,
-                    batch_size: parseInt(batchSizeInput.value),
-                    sequence_length: parseInt(seqLenInput.value),
-                    precision: precisionSelect.value
-                };
-                
-                // Call scaling analysis API
-                fetch('/api/model_scaling_analysis', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(scalingData)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Scaling analysis failed');
-                    }
-                    return response.json();
-                })
-                .then(scalingResult => {
-                    const scalingResults = document.getElementById('scaling-results');
-                    
-                    // Format the scaling analysis results
-                    let scalingHtml = '';
-                    
-                    // Show total VRAM requirements
-                    scalingHtml += `
-                        <p><strong>Total VRAM Required:</strong> ${scalingResult.total_vram_required_gb != null ? scalingResult.total_vram_required_gb.toFixed(2) : 'N/A'} GB</p>
-                        <p><strong>GPU VRAM Capacity:</strong> ${scalingResult.gpu_vram_capacity_gb != null ? scalingResult.gpu_vram_capacity_gb.toFixed(2) : 'N/A'} GB</p>
-                    `;
-                    
-                    // Show if model fits on single GPU
-                    if (scalingResult.fits_on_single_gpu) {
-                        scalingHtml += `
-                            <div style="background-color: #e8f5e9; border-left: 4px solid #4CAF50; padding: 10px; margin: 10px 0;">
-                                <p><strong>✓ Model fits on a single GPU</strong></p>
-                            </div>
-                        `;
-                    } else {
-                        scalingHtml += `
-                            <div style="background-color: #ffebee; border-left: 4px solid #f44336; padding: 10px; margin: 10px 0;">
-                                <p><strong>⚠ Model does not fit on a single GPU</strong></p>
-                                <p><strong>GPUs Required:</strong> ${scalingResult.num_gpus_required || 'Unknown'}</p>
-                                <p><strong>Recommended Strategy:</strong> ${scalingResult.recommended_strategy ? scalingResult.recommended_strategy.toUpperCase() : 'Unknown'}</p>
-                            </div>
-                        `;
-                        
-                        // Add scaling details if model doesn't fit
-                        if (scalingResult.scaling_details) {
-                            const details = scalingResult.scaling_details;
-                            
-                            if (details.note) {
-                                // Show message if advanced scaling is not available
-                                scalingHtml += `<p>${details.note}</p>`;
-                            } else {
-                                // Show detailed parallelism information
-                                scalingHtml += `
-                                    <h4>Parallelism Configuration</h4>
-                                    <table>
-                                        <tr>
-                                            <td>Tensor Parallelism Degree:</td>
-                                            <td>${details.tensor_parallelism_degree || 1}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Pipeline Parallelism Degree:</td>
-                                            <td>${details.pipeline_parallelism_degree || 1}</td>
-                                        </tr>
-                                        <tr>
-                                            <td>VRAM per GPU:</td>
-                                            <td>${details.vram_per_gpu_gb ? details.vram_per_gpu_gb.toFixed(2) : 'N/A'} GB</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Communication Overhead:</td>
-                                            <td>${details.communication_overhead_gb ? details.communication_overhead_gb.toFixed(2) : 'N/A'} GB</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Estimated Efficiency:</td>
-                                            <td>${details.estimated_efficiency ? (details.estimated_efficiency * 100).toFixed(1) : 'N/A'}%</td>
-                                        </tr>
-                                    </table>
-                                    
-                                    <div style="margin-top: 15px;">
-                                        <strong>What this means:</strong>
-                                        <ul>
-                                            <li><strong>Tensor Parallelism (TP):</strong> Splits model tensors across GPUs. Good for reducing memory per GPU with minimal latency impact.</li>
-                                            <li><strong>Pipeline Parallelism (PP):</strong> Splits model layers across GPUs. Good for very deep models but adds pipeline bubble overhead.</li>
-                                            <li><strong>TP+PP:</strong> Combined approach for extremely large models that need both forms of parallelism.</li>
-                                        </ul>
-                                    </div>
-                                `;
-                            }
-                        }
-                    }
-                    
-                    scalingResults.innerHTML = scalingHtml;
-                })
-                .catch(error => {
-                    console.error('Scaling analysis error:', error);
-                    document.getElementById('scaling-results').innerHTML = `
-                        <div class="error">Failed to perform scaling analysis: ${error.message}</div>
-                    `;
-                });
-            }
         });
     </script>
 </body>

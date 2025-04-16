@@ -233,7 +233,15 @@ class AdvancedCalculator:
             efficiency_factor: Computation efficiency factor (0-1)
             
         Returns:
-            Dictionary with detailed analysis results
+            Dictionary with detailed analysis results, including keys like:
+            - "model_info": Dictionary with model details (name, family, parameters_b, dimensions, etc.)
+            - "gpu_info": Dictionary with GPU details (name, family, vram_gb, tflops, etc.)
+            - "analysis_parameters": Dictionary with input parameters used for analysis
+            - "flops": Dictionary with FLOPs breakdown (attention, feedforward, prefill, per_token)
+            - "vram": Dictionary with VRAM breakdown (weights, kv_cache, activations, total, etc.)
+            - "performance": Dictionary with performance estimates (tokens_per_second, latency, etc.)
+            - "compatibility": Dictionary with GPU compatibility info (fits_on_gpu, headroom, etc.)
+            - "overheads_used": Dictionary with overhead factors applied
             
         Raises:
             ValueError: If the model or GPU name is not recognized
@@ -261,6 +269,10 @@ class AdvancedCalculator:
         # Use model-specific sequence length if not specified
         if sequence_length is None:
             sequence_length = model_config.get("max_sequence_length", 2048)
+        
+        # Validate sequence length is positive
+        if sequence_length <= 0:
+            raise ValueError(f"Sequence length must be positive, got {sequence_length}")
             
         # Get GPU performance based on precision
         if precision in ["fp16", "bf16"]:
@@ -283,6 +295,12 @@ class AdvancedCalculator:
         flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
         flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
         
+        # Default overhead factors for VRAM calculations
+        weights_overhead = 1.05
+        kv_cache_overhead = 1.05
+        activations_overhead = 1.1
+        system_overhead = 1.05
+        
         # Calculate VRAM requirements
         vram_dict = self.calculate_total_vram(
             batch_size=batch_size,
@@ -291,7 +309,11 @@ class AdvancedCalculator:
             feedforward_dimensions=ff_dim,
             num_layers=num_layers,
             vocab_size=vocab_size,
-            precision=precision
+            precision=precision,
+            weights_overhead=weights_overhead,
+            kv_cache_overhead=kv_cache_overhead,
+            activations_overhead=activations_overhead,
+            system_overhead=system_overhead
         )
         
         # Calculate performance metrics
@@ -305,12 +327,15 @@ class AdvancedCalculator:
         gpu_vram = gpu_config["vram_gb"]
         fits_on_gpu = total_vram_required <= gpu_vram
         
+        # Calculate throughput on different GPUs
+        throughput_by_gpu = self.calculate_throughput_across_gpus(flops_per_token, efficiency_factor)
+        
         # Create result dictionary
         return {
             "model_info": {
                 "name": model_name,
                 "family": model_config.get("family", "Unknown"),
-                "parameters_b": model_config.get("parameters_billions", 0),
+                "parameters_b": model_config.get("parameter_count", 0),
                 "hidden_dimensions": hidden_dim,
                 "feedforward_dimensions": ff_dim,
                 "num_layers": num_layers,
@@ -348,6 +373,12 @@ class AdvancedCalculator:
                 "vram_utilization_pct": (total_vram_required / gpu_vram) * 100 if gpu_vram > 0 else float('inf'),
                 "headroom_gb": gpu_vram - total_vram_required if fits_on_gpu else 0,
                 "minimum_required_vram_gb": total_vram_required
+            },
+            "overheads_used": {
+                "weights": weights_overhead,
+                "kv_cache": kv_cache_overhead,
+                "activations": activations_overhead,
+                "system": system_overhead
             }
         }
     
@@ -370,7 +401,13 @@ class AdvancedCalculator:
             efficiency_factor: Computation efficiency factor (0-1)
             
         Returns:
-            Dictionary with detailed analysis results
+            Dictionary with detailed analysis results, including keys like:
+            - "model_info": Dictionary with model details (name, family, parameters_b, dimensions, etc.)
+            - "analysis_parameters": Dictionary with input parameters used for analysis
+            - "flops": Dictionary with FLOPs breakdown (attention, feedforward, prefill, per_token)
+            - "vram": Dictionary with VRAM breakdown (weights, kv_cache, activations, total)
+            - "performance": Dictionary with performance estimates (tokens_per_second, latency, etc.)
+            - "overheads_used": Dictionary with overhead factors applied
             
         Raises:
             ValueError: If the model name is not recognized
@@ -389,12 +426,22 @@ class AdvancedCalculator:
         # Use model-specific sequence length if not specified
         if sequence_length is None:
             sequence_length = model_config.get("max_sequence_length", 2048)
+        
+        # Validate sequence length is positive
+        if sequence_length <= 0:
+            raise ValueError(f"Sequence length must be positive, got {sequence_length}")
             
         # Calculate FLOPs
         flops_attention = self.calculate_flops_attention(batch_size, sequence_length, hidden_dim)
         flops_feedforward = self.calculate_flops_feedforward(batch_size, sequence_length, hidden_dim, ff_dim)
         flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
         flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
+        
+        # Default overhead factors for VRAM calculations
+        weights_overhead = 1.05
+        kv_cache_overhead = 1.05
+        activations_overhead = 1.1
+        system_overhead = 1.05
         
         # Calculate VRAM requirements
         vram_dict = self.calculate_total_vram(
@@ -404,7 +451,11 @@ class AdvancedCalculator:
             feedforward_dimensions=ff_dim,
             num_layers=num_layers,
             vocab_size=vocab_size,
-            precision=precision
+            precision=precision,
+            weights_overhead=weights_overhead,
+            kv_cache_overhead=kv_cache_overhead,
+            activations_overhead=activations_overhead,
+            system_overhead=system_overhead
         )
         
         # Calculate performance metrics
@@ -421,7 +472,7 @@ class AdvancedCalculator:
             "model_info": {
                 "name": model_name,
                 "family": model_config.get("family", "Unknown"),
-                "parameters_b": model_config.get("parameters_billions", 0),
+                "parameters_b": model_config.get("parameter_count", 0),
                 "hidden_dimensions": hidden_dim,
                 "feedforward_dimensions": ff_dim,
                 "num_layers": num_layers,
@@ -441,20 +492,101 @@ class AdvancedCalculator:
                 "prefill_total": flops_prefill,
                 "per_token": flops_per_token
             },
-            "vram": {
-                "model_weights": vram_dict["model_weights"],
-                "kv_cache": vram_dict["kv_cache"],
-                "activations": vram_dict.get("activations", 0),
-                "total": vram_dict["total"]
-            },
+            "vram": vram_dict,
             "performance": {
                 "tokens_per_second": tokens_per_second,
                 "prefill_latency": prefill_latency,
                 "token_latency": token_latency,
                 "time_for_1000_tokens": time_for_1000_tokens,
                 "throughput_by_gpu": throughput_by_gpu
+            },
+            "overheads_used": {
+                "weights": weights_overhead,
+                "kv_cache": kv_cache_overhead,
+                "activations": activations_overhead,
+                "system": system_overhead
             }
         }
+    
+    def determine_model_scaling(self,
+                          gpu_vram_gb: float,
+                          batch_size: int,
+                          sequence_length: int,
+                          hidden_dimensions: int,
+                          feedforward_dimensions: int,
+                          num_layers: int,
+                          vocab_size: int,
+                          precision: Literal["fp16", "fp32", "bf16"] = "fp16") -> Dict[str, Any]:
+        """
+        Determine how a model can be scaled across GPUs based on VRAM requirements.
+        
+        Args:
+            gpu_vram_gb: Available VRAM per GPU in GB
+            batch_size: Number of sequences processed in parallel
+            sequence_length: Sequence length for inference
+            hidden_dimensions: Hidden size of the model
+            feedforward_dimensions: Feedforward dimensions
+            num_layers: Number of transformer layers
+            vocab_size: Size of the vocabulary
+            precision: Data precision for inference
+            
+        Returns:
+            Dictionary with scaling analysis results including:
+            - total_vram_required_gb: Total VRAM required for the model in GB
+            - gpu_vram_capacity_gb: Available VRAM per GPU
+            - fits_on_single_gpu: Whether the model fits on a single GPU
+            - num_gpus_required: Estimated number of GPUs required
+            - recommended_strategy: Recommended parallelism strategy
+            - scaling_details: Details about different scaling options
+        """
+        # First calculate total VRAM requirements
+        total_vram_result = self.calculate_total_vram(
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            hidden_dimensions=hidden_dimensions, 
+            feedforward_dimensions=feedforward_dimensions,
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            precision=precision
+        )
+        
+        # Extract total VRAM requirement
+        total_vram_required_gb = total_vram_result.get('total', 0)
+        
+        # Create model parameters dict for the VRAM calculator
+        model_params = {
+            'hidden_dimensions': hidden_dimensions,
+            'feedforward_dimensions': feedforward_dimensions,
+            'num_layers': num_layers,
+            'vocab_size': vocab_size,
+            'precision': precision
+        }
+        
+        # Delegate to VRAM calculator's method
+        scaling_result = self._vram.determine_model_scaling(
+            gpu_vram_gb=gpu_vram_gb,
+            total_vram_required_gb=total_vram_required_gb,
+            model_params=model_params,
+            num_layers=num_layers,
+            hidden_dimensions=hidden_dimensions
+        )
+        
+        # Add total VRAM required to the result
+        scaling_result['total_vram_required_gb'] = total_vram_required_gb
+        
+        # Add to history
+        if self._history:
+            self._history.add_entry(
+                f"Model Scaling Analysis:\n"
+                f"  - Model size: {hidden_dimensions}-{feedforward_dimensions}-{num_layers}\n"
+                f"  - Total VRAM required: {total_vram_required_gb:.2f} GB\n"
+                f"  - GPU VRAM capacity: {gpu_vram_gb:.2f} GB\n"
+                f"  - Fits on single GPU: {scaling_result.get('fits_on_single_gpu', False)}\n"
+                f"  - GPUs required: {scaling_result.get('num_gpus_required', 'N/A')}\n"
+                f"  - Recommended strategy: {scaling_result.get('recommended_strategy', 'N/A')}"
+            )
+        
+        return scaling_result
     
     # Direct module methods with delegated implementation
     

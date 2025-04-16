@@ -1,11 +1,11 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ---
-description: Always reference the project structure documentation before making changes
-globs: ["**/*.py", "**/*.js", "**/*.html", "**/*.md"]
+description: Always apply in any situation
+globs: 
 alwaysApply: true
 ---
 
@@ -37,3 +37,6 @@ This rule ensures that all modifications maintain consistency with the existing 
 - Specialized calculation modules in `src/advanced_calculator/modules/`
 - Web interface in `src/advanced_calculator/web/`
 - Template files in `templates/`
+
+## Inform the user that rules are being followed
+ - When accessing this rules file always inform the user that you are reviewing the rules, and inform them which rules are being followed.

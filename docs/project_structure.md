@@ -20,6 +20,8 @@ The project offers both command-line tools and a web-based GUI for interactive e
 LLM-Inference-Calculator/
 ├── docs/                      # Documentation
 │   ├── project_structure.md   # This document
+│   ├── advanced_calculator_usage.md # AdvancedCalculator class usage documentation
+│   ├── calculator_api_description.md # API endpoint documentation
 │   └── ...                    # Additional documentation
 ├── examples/                  # Example scripts demonstrating usage
 │   ├── advanced_calculator_example.py
@@ -28,13 +30,14 @@ LLM-Inference-Calculator/
 ├── logging/                   # Directory for calculation history
 ├── src/                       # Source code
 │   ├── __init__.py
-│   ├── __main__.py            # Entry point for running as a module
+│   ├── __main__.py            # Entry point for running as a module (`python -m src`)
 │   └── advanced_calculator/   # Advanced calculator implementation
 │       ├── __init__.py
 │       ├── cli.py             # Command-line interface
 │       ├── main.py            # Core calculator integration layer
 │       ├── run_web.py         # Script to run the web interface
 │       ├── README.md          # Documentation for the calculator
+│       ├── documentation/     # Additional specific documentation (e.g., design docs)
 │       ├── modules/           # Specialized calculator modules
 │       │   ├── __init__.py
 │       │   ├── flops.py       # FLOPs calculations
@@ -46,7 +49,9 @@ LLM-Inference-Calculator/
 │       │   └── vram.py        # Memory requirement calculations
 │       └── web/               # Web interface implementation
 │           ├── __init__.py
-│           └── web_app.py     # Flask web application
+│           ├── web_app.py     # Flask web application
+│           └── static/        # Static files (CSS, JS) for the web app
+│           └── server_logs.txt # Server-specific logs (if used)
 ├── templates/                 # HTML templates for the web interface
 │   ├── index.html
 │   └── visualize.html
@@ -59,8 +64,12 @@ LLM-Inference-Calculator/
 ├── README.md                  # Main project documentation
 ├── README_WEB_GUI.md          # Web GUI specific documentation
 ├── requirements.txt           # Python dependencies
-└── setup.py                   # Package installation configuration
+├── setup.py                   # Package installation configuration
+├── server_log.txt             # Server log file (specific usage TBD)
+└── tatus                      # Unknown file (purpose TBD)
 ```
+
+*(Note: Standard directories like `.git`, `.venv`, `.cursor`, and `__pycache__/` are omitted for clarity.)*
 
 ## Core Components
 
@@ -74,7 +83,9 @@ The main calculator serves as an integration layer that initializes and coordina
 - Provides methods for working with predefined models and GPUs
 - Implements high-level analysis functions that combine multiple calculations
 
-Usage example:
+**For comprehensive documentation on using the AdvancedCalculator class directly in your Python code, see [Advanced Calculator Usage Guide](advanced_calculator_usage.md).**
+
+Basic usage example:
 ```python
 from src.advanced_calculator import AdvancedCalculator
 
@@ -230,3 +241,5 @@ The `templates/` directory contains HTML templates for the web interface:
 - `README.md`: Main project documentation with overview and setup instructions
 - `README_WEB_GUI.md`: Detailed documentation on using the web interface
 - `docs/`: Additional documentation on various aspects of the project
+- `docs/advanced_calculator_usage.md`: Comprehensive documentation for using the AdvancedCalculator class directly in Python code
+- `docs/calculator_api_description.md`: API documentation for the calculator endpoints. **Important**: Developers should refer to this document when making API calls to ensure correct parameter usage and response handling.
