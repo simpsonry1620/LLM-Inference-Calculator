@@ -7,13 +7,14 @@ A Python-based calculator for estimating and planning Large Language Model (LLM)
 - Calculate compute resources required for LLM training and inference
 - Estimate VRAM requirements for model weights and activations
 - Calculate FLOPs for various transformer components
-- Predict throughput and latency for inference workloads (primarily via Web GUI)
+- Predict throughput and latency for inference workloads
 - Compare scaling options for optimal performance
 - **NEW**: Predefined model architectures and GPU configurations
 - **NEW**: Multi-GPU scaling strategy recommendations (Tensor Parallelism, Pipeline Parallelism)
-- **Web GUI** for interactive exploration and visualization
+- **Desktop GUI** (Recommended) for interactive calculations.
+- **Web GUI** (Experimental) for interactive exploration and visualization (currently under development).
 - **NEW**: Calculation logging (CLI & Web) to `logging/` directory
-- **NEW**: Web-based visualization page (`/visualize`) to view, sort, filter, and plot calculation history
+- **NEW**: Web-based visualization page (`/visualize`) to view, sort, filter, and plot calculation history (part of experimental Web GUI).
 
 ## Setup
 
@@ -60,11 +61,24 @@ A Python-based calculator for estimating and planning Large Language Model (LLM)
     ```
     *(Note: Replace `$(pwd)` with `%cd%` on Windows Command Prompt if needed, or provide an absolute path.)*
 
-### Web GUI
+### Desktop GUI (Recommended)
 
-The easiest way to use the calculator is through the web interface:
+This is the recommended way to use the calculator for most users.
 
+```bash
+# Make sure you are in the project root directory
+python -m src.gui.main
 ```
+
+This will launch the desktop application built with Tkinter.
+
+### Web GUI (Experimental)
+
+**Note:** The Web GUI is currently experimental and under active development. It may contain bugs or incomplete features. For stable usage, please use the Desktop GUI.
+
+The web interface provides interactive exploration and visualization capabilities:
+
+```bash
 # Make sure you are in the project root directory
 python -m src.advanced_calculator.run_web
 ```
@@ -144,9 +158,9 @@ print(f"Required GPUs: {scaling_info['num_gpus_required']}")
 
 ### Using Predefined Models & GPUs
 
-Predefined model architectures and GPU specifications are primarily utilized by the **Web GUI** (`src/calculator_app/web_app.py`). The GUI logic itself contains or imports these configurations (potentially from helper modules within `src/calculator_app/` if refactored).
+Predefined model architectures and GPU specifications are utilized by the **Desktop GUI** and **Web GUI**.
 
-Directly accessing these predefined configurations in a script would involve importing functions from `src.calculator_app.web_app` or the respective modules if needed, which is less common for typical usage.
+The GUIs allow selecting these models and GPUs to pre-fill parameters for calculations.
 
 ## Calculation Approaches and Assumptions
 
