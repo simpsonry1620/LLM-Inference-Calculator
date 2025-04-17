@@ -144,8 +144,10 @@ The calculator supports multiple precision types:
 ### Latency Components
 
 **Key Assumptions**:
-- Prefill latency depends on the entire prompt length and scales with sequence length.
-- Per-token generation latency is much smaller but consistent for each new token.
+- Prefill latency depends on the entire prompt length and scales with sequence length. *(Currently modeled as purely compute-bound)*
+- Per-token generation latency is calculated considering both compute and memory bandwidth limitations. It is assumed that the actual latency is limited by the slower of the two (compute vs. memory).
+- It is assumed that for token generation, all model parameters must be read from GPU memory for each token (a common scenario, especially for batch size 1).
+- The efficiency factor applies equally to both compute TFLOPS and memory bandwidth (GB/s) when calculating realistic latency.
 - Total completion latency = Prefill Latency + (Generation Latency * Output Length)
 - The time to first token (TTFT) is dominated by the prefill latency.
 

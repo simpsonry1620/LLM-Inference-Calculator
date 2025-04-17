@@ -214,11 +214,14 @@ VRAM estimates include:
    - Based on GPU FLOPS capacity and model's FLOPS requirements
    - Includes efficiency factor to account for real-world performance (typically 20-30% of theoretical peak)
    - Considers parallelization across multiple GPUs with scaling efficiency
+   - *Note:* Throughput is typically the inverse of token generation latency.
 
 2. **Latency Calculation**:
-   - Separates prefill phase (processing full context) from token generation
-   - Accounts for efficiency factors based on empirical observations
-   - Provides time-to-first-token and per-token generation estimates
+   - Separates prefill phase (processing full context) from token generation.
+   - **Prefill latency** is currently estimated based primarily on compute FLOPs.
+   - **Token generation latency** considers *both* compute FLOPs and memory bandwidth limitations, using the slower of the two as the bottleneck.
+   - Accounts for efficiency factors based on empirical observations.
+   - Provides time-to-first-token (approximated by prefill latency) and per-token generation estimates.
 
 ### Multi-GPU Scaling
 
@@ -310,4 +313,20 @@ The web interface provides an intuitive way to interact with the calculator and 
 - The `logging/` directory is included in `.gitignore`.
 - A visualization page is available in the Web GUI at the `/visualize` endpoint.
 - This page displays a sortable and filterable table of logged calculations (from both CLI and Web logs).
-- Users can select entries from the table and plot comparisons of VRAM usage and Tokens/sec. 
+- Users can select entries from the table and plot comparisons of VRAM usage and Tokens/sec.
+
+## Development
+
+For setting up a development environment and contributing, please see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Known Issues and Future Work
+
+We are continuously working to improve the accuracy and functionality of the calculator. Here are some areas identified for future enhancement, tracked via GitHub Issues:
+
+*   **GPU Definition Accuracy**: Add missing GPU specifications like the NVIDIA RTX 6000 Ada Generation to `gpus.py` for improved hardware matching. (Tracked in Issue #\[INSERT_ISSUE_1_NUMBER_HERE])
+*   **Inference Optimization Modeling**: Enhance the internal performance model to better account for the impact of optimizations like Fused Multi-Head Attention (fMHA), padding removal, and chunked prefill used in modern inference engines like TensorRT-LLM. (Tracked in Issue #\[INSERT_ISSUE_2_NUMBER_HERE])
+*   **KV Cache Precision Verification**: Verify and potentially refine how KV cache precision is handled in calculations, ensuring it aligns with common practices (e.g., matching model precision or using specific types like FP8) and accurately reflects memory usage. (Tracked in Issue #\[INSERT_ISSUE_3_NUMBER_HERE])
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 

@@ -1,20 +1,22 @@
 from typing import List, Any
 
+
 class HistoryManager:
     """
     Manages calculation history for the advanced calculator.
     """
+
     def __init__(self) -> None:
         self.history: List[str] = []
-    
+
     def add_entry(self, entry: str) -> None:
         """Add an entry to the calculation history"""
         self.history.append(entry)
-    
+
     def clear(self) -> None:
         """Clear calculation history"""
         self.history = []
-    
+
     def get_entries(self) -> List[str]:
         """Return calculation history"""
         return self.history

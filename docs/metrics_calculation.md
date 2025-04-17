@@ -139,11 +139,32 @@ The time required to process the full context (prefill phase) is:
 
 $$\text{Latency}_{\text{Prefill}} = \frac{\text{FLOPs}_{\text{Prefill}}}{\text{GPU}_{\text{FLOPS}} \times f_{\text{efficiency}}}$$
 
+*(Note: This currently only considers compute limitations. Memory bandwidth effects on prefill are a TODO.)*
+
 ### 3.3 Token Generation Latency
 
-The time required to generate a single token is:
+The time required to generate a single token considers both compute and memory bandwidth limitations. The latency is the maximum of the compute-bound latency and the memory-bound latency.
 
-$$\text{Latency}_{\text{Token}} = \frac{\text{FLOPs}_{\text{PerToken}}}{\text{GPU}_{\text{FLOPS}} \times f_{\text{efficiency}}}$$
+**Compute Latency:**
+
+$$\text{Latency}_{\text{Token (Compute)}} = \frac{\text{FLOPs}_{\text{PerToken}}}{\text{GPU}_{\text{FLOPS}} \times f_{\text{efficiency}}}$$
+
+**Memory Latency:**
+This assumes all model parameters need to be loaded from memory per token.
+
+$$\text{Latency}_{\text{Token (Memory)}} = \frac{\text{Model Size (Bytes)}}{\text{Effective Memory Bandwidth (Bytes/s)}}$$
+
+$$\text{Model Size (Bytes)} = P_{\text{Billion}} \times 10^9 \times b$$
+$$\text{Effective Memory Bandwidth} = \text{BW}_{\text{GB/s}} \times 10^9 \times f_{\text{efficiency}}$$
+
+Where:
+- $P_{\text{Billion}}$ = Model parameters in billions
+- $b$ = Bytes per parameter based on precision
+- $\text{BW}_{\text{GB/s}}$ = GPU memory bandwidth in GB/s
+
+**Final Token Latency:**
+
+$$\text{Latency}_{\text{Token}} = \max(\text{Latency}_{\text{Token (Compute)}}, \text{Latency}_{\text{Token (Memory)}})$$
 
 ### 3.4 Time for N Tokens
 

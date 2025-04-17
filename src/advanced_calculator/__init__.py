@@ -16,4 +16,4 @@ Main Classes:
 from .main import AdvancedCalculator
 from .web import create_app
 
-__all__ = ['AdvancedCalculator', 'create_app']
+__all__ = ["AdvancedCalculator", "create_app"]

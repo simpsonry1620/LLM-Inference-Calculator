@@ -4,10 +4,12 @@ Predefined GPU specifications for LLM infrastructure calculations.
 This module contains specifications for common NVIDIA GPUs to simplify resource estimation.
 """
 
-from typing import Dict, Any, List, Optional, TypedDict, Set, Literal
+from typing import Dict, List, Optional, TypedDict
+
 
 class GPUConfig(TypedDict, total=False):
     """Type definition for GPU configuration dictionary"""
+
     name: str
     family: str
     gen: str
@@ -27,6 +29,7 @@ class GPUConfig(TypedDict, total=False):
     interconnect_bandwidth_gb_per_sec: float
     compute_capability: str
     supported_precisions: List[str]
+    memory_bandwidth_gb_per_sec: float
 
 
 # Dictionary of predefined NVIDIA GPUs
@@ -51,7 +54,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
     "rtx-3080": {
         "name": "NVIDIA RTX 3080",
@@ -69,12 +72,11 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "max_batch_size": 8,
         "launch_year": 2020,
         "description": "High-end consumer GPU of the Ampere generation",
-        "pcie_gen": 4, 
+        "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
-    
     # RTX 40 Series (Ada Lovelace)
     "rtx-4090": {
         "name": "NVIDIA RTX 4090",
@@ -95,7 +97,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
     "rtx-4080": {
         "name": "NVIDIA RTX 4080",
@@ -116,9 +118,8 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
-    
     # Datacenter GPUs - Ampere
     "a100-sxm4-40gb": {
         "name": "NVIDIA A100 SXM4 40GB",
@@ -139,7 +140,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 600.0,
         "compute_capability": "8.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"],
     },
     "a100-pcie-40gb": {
         "name": "NVIDIA A100 PCIe 40GB",
@@ -160,7 +161,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"],
     },
     "a100-sxm4-80gb": {
         "name": "NVIDIA A100 SXM4 80GB",
@@ -181,7 +182,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 600.0,
         "compute_capability": "8.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"],
     },
     "a10g": {
         "name": "NVIDIA A10G",
@@ -202,9 +203,8 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"],
     },
-    
     # Datacenter GPUs - Hopper
     "h100-sxm5-80gb": {
         "name": "NVIDIA H100 SXM5 80GB",
@@ -225,7 +225,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 900.0,
         "compute_capability": "9.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
     "h100-pcie-80gb": {
         "name": "NVIDIA H100 PCIe 80GB",
@@ -246,7 +246,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 64.0,
         "compute_capability": "9.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
     "h100-pcie-56gb": {
         "name": "NVIDIA H100 PCIe 56GB",
@@ -267,9 +267,8 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 64.0,
         "compute_capability": "9.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
-    
     # Newest Datacenter GPUs - Blackwell
     "b100-80gb": {
         "name": "NVIDIA B100 80GB",
@@ -290,7 +289,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 1800.0,
         "compute_capability": "10.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
     "b200-128gb": {
         "name": "NVIDIA B200 128GB",
@@ -311,9 +310,8 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 1800.0,
         "compute_capability": "10.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
-    
     # Datacenter GPUs - Hopper - High Memory
     "h200-hbm3e-141gb": {
         "name": "NVIDIA H200 HBM3e 141GB",
@@ -334,9 +332,8 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 900.0,
         "compute_capability": "9.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
-    
     # Workstation GPUs
     "rtx-a6000": {
         "name": "NVIDIA RTX A6000",
@@ -357,7 +354,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
     "rtx-a5000": {
         "name": "NVIDIA RTX A5000",
@@ -378,7 +375,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
     "l40": {
         "name": "NVIDIA L40",
@@ -399,20 +396,20 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
-        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+        "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"],
     },
     "l40s": {
         "name": "NVIDIA L40S",
         "family": "Datacenter",
         "gen": "Ada Lovelace",
         "vram_gb": 48.0,
+        "memory_bandwidth_gb_per_sec": 864.0,
         "bandwidth_gb_per_sec": 864.0,
         "fp32_tflops": 91.6,
         "fp16_tflops": 366.0,
         "bf16_tflops": 366.0,
         "int8_tflops": 733.0,
-        "int4_tflops": 733.0,
-        "fp8_tflops": 733.0,
+        "int4_tflops": 1466.0,
         "tdp_watts": 350,
         "tensor_cores": True,
         "max_batch_size": 40,
@@ -421,7 +418,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 4,
         "interconnect_bandwidth_gb_per_sec": 64.0,
         "compute_capability": "8.9",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
     },
     "b100-sxm6": {
         "name": "NVIDIA B100 SXM6",
@@ -442,33 +439,33 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "pcie_gen": 5,
         "interconnect_bandwidth_gb_per_sec": 1800.0,
         "compute_capability": "10.0",
-        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
-    }
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"],
+    },
 }
 
 
 def get_gpu_config(gpu_name: str) -> Optional[GPUConfig]:
     """
     Get configuration for a specific GPU by name.
-    
+
     Args:
         gpu_name: Name of the GPU to retrieve
-        
+
     Returns:
         GPU configuration dictionary or None if GPU not found
     """
     normalized_name = gpu_name.lower().replace(" ", "-")
-    
+
     # Try direct lookup
     if normalized_name in KNOWN_GPUS:
         return KNOWN_GPUS[normalized_name]
-    
+
     # Try alternative lookups (without hyphens, etc.)
     normalized_alt = normalized_name.replace("-", "")
     for key, gpu in KNOWN_GPUS.items():
         if key.replace("-", "") == normalized_alt:
             return gpu
-            
+
     # Not found
     return None
 
@@ -476,7 +473,7 @@ def get_gpu_config(gpu_name: str) -> Optional[GPUConfig]:
 def get_gpu_families() -> List[str]:
     """
     Get the list of available GPU families.
-    
+
     Returns:
         List of unique GPU families
     """
@@ -486,7 +483,7 @@ def get_gpu_families() -> List[str]:
 def get_gpu_generations() -> List[str]:
     """
     Get the list of available GPU generations.
-    
+
     Returns:
         List of unique GPU generations
     """
@@ -496,36 +493,40 @@ def get_gpu_generations() -> List[str]:
 def get_gpus_by_family(family: str) -> List[GPUConfig]:
     """
     Get all GPUs belonging to a specific family.
-    
+
     Args:
         family: Name of the GPU family
-        
+
     Returns:
         List of GPU configurations in the specified family
     """
-    return [gpu for gpu in KNOWN_GPUS.values() if gpu["family"].lower() == family.lower()]
+    return [
+        gpu for gpu in KNOWN_GPUS.values() if gpu["family"].lower() == family.lower()
+    ]
 
 
 def get_gpus_by_generation(generation: str) -> List[GPUConfig]:
     """
     Get all GPUs belonging to a specific generation.
-    
+
     Args:
         generation: Name of the GPU generation
-        
+
     Returns:
         List of GPU configurations in the specified generation
     """
-    return [gpu for gpu in KNOWN_GPUS.values() if gpu["gen"].lower() == generation.lower()]
+    return [
+        gpu for gpu in KNOWN_GPUS.values() if gpu["gen"].lower() == generation.lower()
+    ]
 
 
 def get_gpus_by_min_vram(min_vram_gb: float) -> List[GPUConfig]:
     """
     Get all GPUs with at least the specified amount of VRAM.
-    
+
     Args:
         min_vram_gb: Minimum VRAM in gigabytes
-        
+
     Returns:
         List of GPU configurations with sufficient VRAM
     """
@@ -535,40 +536,46 @@ def get_gpus_by_min_vram(min_vram_gb: float) -> List[GPUConfig]:
 def get_gpus_supporting_precision(precision: str) -> List[GPUConfig]:
     """
     Get all GPUs that support the specified precision.
-    
+
     Args:
         precision: Precision to check for (e.g., "fp16", "bf16", "fp8")
-        
+
     Returns:
         List of GPU configurations supporting the precision
     """
-    return [gpu for gpu in KNOWN_GPUS.values() if precision.lower() in [p.lower() for p in gpu["supported_precisions"]]]
+    return [
+        gpu
+        for gpu in KNOWN_GPUS.values()
+        if precision.lower() in [p.lower() for p in gpu["supported_precisions"]]
+    ]
 
 
 def list_all_gpus() -> List[str]:
     """
     List all available GPU names.
-    
+
     Returns:
         List of GPU names
     """
     return sorted(KNOWN_GPUS.keys())
 
 
-def get_recommended_gpu_for_model(model_vram_gb: float, min_vram_headroom_gb: float = 2.0) -> List[GPUConfig]:
+def get_recommended_gpu_for_model(
+    model_vram_gb: float, min_vram_headroom_gb: float = 2.0
+) -> List[GPUConfig]:
     """
     Get recommended GPUs for a model with the specified VRAM requirements.
-    
+
     Args:
         model_vram_gb: Model VRAM requirements in gigabytes
         min_vram_headroom_gb: Minimum extra VRAM headroom to recommend
-        
+
     Returns:
         List of GPU configurations that can run the model with sufficient headroom
     """
     required_vram = model_vram_gb + min_vram_headroom_gb
     viable_gpus = get_gpus_by_min_vram(required_vram)
-    
+
     # Sort by efficiency (VRAM per dollar approximation)
     # First datacenter, then workstation, then consumer GPUs
-    return sorted(viable_gpus, key=lambda gpu: gpu["vram_gb"]) 
+    return sorted(viable_gpus, key=lambda gpu: gpu["vram_gb"])
