@@ -12,7 +12,7 @@ The LLM Infrastructure Scaling Calculator is a Python toolkit designed to help e
 - Multi-GPU scaling strategies
 - Comparison of different hardware configurations
 
-The project offers both command-line tools and a web-based GUI for interactive exploration.
+The project offers command-line tools, a web-based GUI, and a desktop GUI for interactive exploration.
 
 ## Directory Structure
 
@@ -52,6 +52,8 @@ LLM-Inference-Calculator/
 │           ├── web_app.py     # Flask web application
 │           └── static/        # Static files (CSS, JS) for the web app
 │           └── server_logs.txt # Server-specific logs (if used)
+│   └── gui/                   # Desktop GUI implementation
+│       └── main.py            # Tkinter GUI application
 ├── templates/                 # HTML templates for the web interface
 │   ├── index.html
 │   └── visualize.html
@@ -175,6 +177,20 @@ python -m src.advanced_calculator.run_web
 ```
 
 Then open your browser to `http://127.0.0.1:5000/` to access the interactive calculator.
+
+### Desktop GUI (`src/gui/main.py`)
+
+A desktop GUI application built using Tkinter provides a native interface for the calculator:
+
+- Input fields for model parameters (dimensions, layers, vocab), sequence lengths, batch size, precision, GPU, and efficiency.
+- Predefined model and GPU selection with automatic TFLOPS filling based on selected precision.
+- Displays detailed results for VRAM breakdown, FLOPs, and performance metrics (latency, throughput).
+- Shows estimated parallelism strategy (Tensor Parallelism, Pipeline Parallelism) if the selected model doesn't fit on the chosen GPU.
+
+To run the desktop GUI:
+```bash
+python src/gui/main.py
+```
 
 ## Command-Line Interface
 

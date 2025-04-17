@@ -284,6 +284,7 @@ def create_app():
         num_layers = int(data.get('num_layers', 0))
         vocab_size = int(data.get('vocab_size', 0))
         seq_length = max(1, int(data.get('seq_length', 2048)))  # Ensure minimum of 1
+        output_seq_length = max(1, int(data.get('output_seq_length', 512))) # Ensure minimum of 1
         batch_size = int(data.get('batch_size', 1))
         precision = data.get('precision', 'fp16')
         gpu_id = data.get('gpu', '')
@@ -300,6 +301,7 @@ def create_app():
                             model_name=model_name,
                             gpu_name=gpu_id,
                             sequence_length=seq_length,
+                            output_sequence_length=output_seq_length,
                             batch_size=batch_size,
                             precision=precision,
                             efficiency_factor=efficiency_factor
@@ -326,6 +328,7 @@ def create_app():
             analysis = calculator.analyze_model_by_name(
                 model_name=model_name,
                 sequence_length=seq_length,
+                output_sequence_length=output_seq_length,
                 batch_size=batch_size,
                 precision=precision,
                 gpu_tflops=gpu_tflops,

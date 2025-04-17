@@ -14,13 +14,14 @@ def cli():
 @click.option('--ff-dim', type=int, required=True, help='Feedforward dimension size')
 @click.option('--num-layers', type=int, required=True, help='Number of layers')
 @click.option('--seq-len', type=int, required=True, help='Sequence length')
+@click.option('--output-len', type=int, default=128, help='Output sequence length')
 @click.option('--batch-size', type=int, default=1, help='Batch size')
 @click.option('--vocab-size', type=int, default=50257, help='Vocabulary size')
 @click.option('--precision', type=click.Choice(['fp16', 'fp32', 'bf16']), default='fp16', help='Model precision')
 @click.option('--tflops', type=float, default=312.0, help='GPU TFLOPS (e.g., 312 for A100)')
 @click.option('--efficiency', type=float, default=0.3, help='GPU efficiency factor')
 @click.option('--format', type=click.Choice(['table', 'json']), default='table', help='Output format')
-def calculate(hidden_dim, ff_dim, num_layers, seq_len, batch_size, vocab_size, precision, tflops, efficiency, format):
+def calculate(hidden_dim, ff_dim, num_layers, seq_len, output_len, batch_size, vocab_size, precision, tflops, efficiency, format):
     """Calculate model requirements with custom parameters."""
     calculator = AdvancedCalculator()
     
@@ -45,12 +46,18 @@ def calculate(hidden_dim, ff_dim, num_layers, seq_len, batch_size, vocab_size, p
     prefill_latency = calculator.estimate_prefill_latency(flops_prefill, tflops, efficiency)
     token_latency = calculator.estimate_token_generation_latency(flops_per_token, tflops, efficiency)
     
+    # Calculate TTFT and Total Request Time
+    time_to_first_token = prefill_latency
+    total_request_time = prefill_latency + (output_len * token_latency)
+    time_for_1000_tokens = token_latency * 1000 # Keep this for comparison
+    
     results = {
         "model_parameters": {
             "hidden_dimensions": hidden_dim,
             "feedforward_dimensions": ff_dim,
             "num_layers": num_layers,
             "sequence_length": seq_len,
+            "output_sequence_length": output_len,
             "batch_size": batch_size,
             "vocab_size": vocab_size,
             "precision": precision
@@ -70,7 +77,9 @@ def calculate(hidden_dim, ff_dim, num_layers, seq_len, batch_size, vocab_size, p
             "tokens_per_second": f"{tokens_per_second:.2f}",
             "prefill_latency": f"{prefill_latency:.4f} s",
             "token_latency": f"{token_latency:.4f} s",
-            "time_for_1000_tokens": f"{token_latency * 1000:.2f} s"
+            "time_to_first_token": f"{time_to_first_token:.4f} s",
+            "total_request_time": f"{total_request_time:.2f} s",
+            "time_for_1000_tokens": f"{time_for_1000_tokens:.2f} s"
         }
     }
     
@@ -104,13 +113,14 @@ def calculate(hidden_dim, ff_dim, num_layers, seq_len, batch_size, vocab_size, p
 
 @cli.command()
 @click.option('--model-name', required=True, help='Name of the predefined model')
-@click.option('--seq-len', type=int, help='Custom sequence length (uses model default if not specified)')
+@click.option('--seq-len', type=int, help='Input sequence length (uses model default if not specified)')
+@click.option('--output-len', type=int, default=128, help='Desired output sequence length')
 @click.option('--batch-size', type=int, default=1, help='Batch size')
 @click.option('--precision', type=click.Choice(['fp16', 'fp32', 'bf16']), default='fp16', help='Model precision')
 @click.option('--tflops', type=float, default=312.0, help='GPU TFLOPS (default: A100)')
 @click.option('--efficiency', type=float, default=0.3, help='GPU efficiency factor')
 @click.option('--format', type=click.Choice(['table', 'json']), default='table', help='Output format')
-def analyze_model(model_name, seq_len, batch_size, precision, tflops, efficiency, format):
+def analyze_model(model_name, seq_len, output_len, batch_size, precision, tflops, efficiency, format):
     """Analyze a predefined model."""
     calculator = AdvancedCalculator()
     
@@ -118,6 +128,7 @@ def analyze_model(model_name, seq_len, batch_size, precision, tflops, efficiency
         results = calculator.analyze_model_by_name(
             model_name=model_name,
             sequence_length=seq_len,
+            output_sequence_length=output_len,
             batch_size=batch_size,
             precision=precision,
             gpu_tflops=tflops,
@@ -130,6 +141,14 @@ def analyze_model(model_name, seq_len, batch_size, precision, tflops, efficiency
             results["flops"]["feedforward"] = f"{results['flops']['feedforward']:.2e}"
             results["flops"]["prefill_total"] = f"{results['flops']['prefill_total']:.2e}"
             results["flops"]["per_token"] = f"{results['flops']['per_token']:.2e}"
+            
+            # Format performance numbers for JSON
+            results["performance"]["tokens_per_second"] = f"{results['performance']['tokens_per_second']:.2f}"
+            results["performance"]["prefill_latency"] = f"{results['performance']['prefill_latency']:.4f} s"
+            results["performance"]["token_latency"] = f"{results['performance']['token_latency']:.4f} s"
+            results["performance"]["time_to_first_token"] = f"{results['performance']['time_to_first_token']:.4f} s"
+            results["performance"]["total_request_time"] = f"{results['performance']['total_request_time']:.2f} s"
+            results["performance"]["time_for_1000_tokens"] = f"{results['performance']['time_for_1000_tokens']:.2f} s"
             
             # Fix throughput values for JSON display
             for gpu, value in results["performance"]["throughput_by_gpu"].items():
@@ -182,6 +201,8 @@ def analyze_model(model_name, seq_len, batch_size, precision, tflops, efficiency
                 ["Tokens Per Second", f"{results['performance']['tokens_per_second']:.2f}"],
                 ["Prefill Latency", f"{results['performance']['prefill_latency']:.4f} s"],
                 ["Token Generation Latency", f"{results['performance']['token_latency']:.4f} s"],
+                ["Time to First Token (TTFT)", f"{results['performance']['time_to_first_token']:.4f} s"],
+                ["Total Request Time", f"{results['performance']['total_request_time']:.2f} s"],
                 ["Time for 1000 tokens", f"{results['performance']['time_for_1000_tokens']:.2f} s"]
             ]
             tables.append("\nPerformance Estimates:")
@@ -270,13 +291,14 @@ def list_gpus():
 @cli.command()
 @click.option('--model-name', required=True, help='Name of the predefined model')
 @click.option('--gpu-name', required=True, help='Name of the GPU to analyze on')
-@click.option('--seq-len', type=int, help='Custom sequence length (uses model default if not specified)')
+@click.option('--seq-len', type=int, help='Input sequence length (uses model default if not specified)')
+@click.option('--output-len', type=int, default=128, help='Desired output sequence length')
 @click.option('--batch-size', type=int, default=1, help='Batch size')
 @click.option('--precision', type=click.Choice(['fp16', 'fp32', 'bf16', 'int8', 'int4']), default='fp16', help='Model precision')
 @click.option('--efficiency', type=float, default=0.3, help='GPU efficiency factor')
 @click.option('--format', type=click.Choice(['table', 'json']), default='table', help='Output format')
-def analyze_model_on_gpu(model_name, gpu_name, seq_len, batch_size, precision, efficiency, format):
-    """Analyze how a model would perform on a specific GPU."""
+def analyze_model_on_gpu(model_name, gpu_name, seq_len, output_len, batch_size, precision, efficiency, format):
+    """Analyze a model's performance on a specific GPU."""
     calculator = AdvancedCalculator()
     
     try:
@@ -284,6 +306,7 @@ def analyze_model_on_gpu(model_name, gpu_name, seq_len, batch_size, precision, e
             model_name=model_name,
             gpu_name=gpu_name,
             sequence_length=seq_len,
+            output_sequence_length=output_len,
             batch_size=batch_size,
             precision=precision,
             efficiency_factor=efficiency
@@ -347,15 +370,16 @@ def analyze_model_on_gpu(model_name, gpu_name, seq_len, batch_size, precision, e
             tables.append(tabulate(compatibility, headers=["Metric", "Value"], tablefmt="grid"))
             
             # Performance Table
-            performance = [
+            perf_table = [
                 ["Tokens Per Second", f"{results['performance']['tokens_per_second']:.2f}"],
                 ["Prefill Latency", f"{results['performance']['prefill_latency']:.4f} s"],
                 ["Token Generation Latency", f"{results['performance']['token_latency']:.4f} s"],
-                ["Time for 1000 tokens", f"{results['performance']['time_for_1000_tokens']:.2f} s"],
-                ["Bandwidth Utilization", f"{results['performance']['bandwidth_utilization']*100:.1f}%"]
+                ["Time to First Token (TTFT)", f"{results['performance']['time_to_first_token']:.4f} s"],
+                ["Total Request Time", f"{results['performance']['total_request_time']:.2f} s"],
+                ["Time for 1000 tokens", f"{results['performance']['time_for_1000_tokens']:.2f} s"]
             ]
             tables.append("\nPerformance Estimates:")
-            tables.append(tabulate(performance, headers=["Metric", "Value"], tablefmt="grid"))
+            tables.append(tabulate(perf_table, headers=["Metric", "Value"], tablefmt="grid"))
             
             click.echo("\n".join(tables))
     

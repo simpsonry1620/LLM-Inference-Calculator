@@ -245,6 +245,11 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="output-seq-len">Output Sequence Length:</label>
+                    <input type="number" id="output-seq-len" value="512" min="1">
+                </div>
+                
+                <div class="form-group">
                     <label for="batch-size">Batch Size:</label>
                     <input type="number" id="batch-size" value="1" min="1">
                 </div>
@@ -388,6 +393,7 @@
             const numLayersInput = document.getElementById('num-layers');
             const vocabSizeInput = document.getElementById('vocab-size');
             const seqLenInput = document.getElementById('seq-len');
+            const outputSeqLenInput = document.getElementById('output-seq-len');
             const batchSizeInput = document.getElementById('batch-size');
             const precisionSelect = document.getElementById('precision');
             const gpuModelSelect = document.getElementById('gpu-model');
@@ -414,6 +420,7 @@
             
             // Set default sequence length to 2048 on page load
             seqLenInput.value = 2048;
+            outputSeqLenInput.value = 512;
             
             // Handle model preset changes
             modelPresetSelect.addEventListener('change', function() {
@@ -433,6 +440,7 @@
                 numLayersInput.value = selectedOption.getAttribute('data-num-layers');
                 vocabSizeInput.value = selectedOption.getAttribute('data-vocab-size');
                 seqLenInput.value = 2048;
+                outputSeqLenInput.value = 512;
             });
             
             // Format numbers for display
@@ -592,6 +600,7 @@
                     num_layers: parseInt(numLayersInput.value),
                     vocab_size: parseInt(vocabSizeInput.value),
                     seq_length: parseInt(seqLenInput.value),
+                    output_seq_length: parseInt(outputSeqLenInput.value),
                     batch_size: parseInt(batchSizeInput.value),
                     precision: precisionSelect.value,
                     gpu: gpuModelSelect.value,

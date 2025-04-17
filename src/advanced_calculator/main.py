@@ -217,7 +217,8 @@ class AdvancedCalculator:
     def analyze_model_on_gpu(self, 
                            model_name: str, 
                            gpu_name: str,
-                           sequence_length: Optional[int] = None,
+                           input_sequence_length: Optional[int] = None,
+                           output_sequence_length: int = 128,
                            batch_size: int = 1,
                            precision: Literal["fp16", "fp32", "bf16", "int8", "int4"] = "fp16",
                            efficiency_factor: float = 0.3) -> Dict[str, Any]:
@@ -227,7 +228,8 @@ class AdvancedCalculator:
         Args:
             model_name: Name of the predefined model
             gpu_name: Name of the GPU to analyze
-            sequence_length: Custom sequence length (uses model default if not specified)
+            input_sequence_length: Input sequence length (uses model default if not specified)
+            output_sequence_length: Desired output sequence length in tokens
             batch_size: Number of sequences processed in parallel
             precision: Data precision for inference
             efficiency_factor: Computation efficiency factor (0-1)
@@ -267,12 +269,15 @@ class AdvancedCalculator:
         vocab_size = model_config["vocab_size"]
         
         # Use model-specific sequence length if not specified
-        if sequence_length is None:
-            sequence_length = model_config.get("max_sequence_length", 2048)
+        current_input_length = input_sequence_length
+        if current_input_length is None:
+            current_input_length = model_config.get("max_sequence_length", 2048)
         
-        # Validate sequence length is positive
-        if sequence_length <= 0:
-            raise ValueError(f"Sequence length must be positive, got {sequence_length}")
+        # Validate sequence lengths are positive
+        if current_input_length <= 0:
+            raise ValueError(f"Input sequence length must be positive, got {current_input_length}")
+        if output_sequence_length <= 0:
+            raise ValueError(f"Output sequence length must be positive, got {output_sequence_length}")
             
         # Get GPU performance based on precision
         if precision in ["fp16", "bf16"]:
@@ -289,10 +294,10 @@ class AdvancedCalculator:
         if gpu_tflops == 0:
             raise ValueError(f"Performance data for {gpu_name} with {precision} precision not available")
             
-        # Calculate FLOPs
-        flops_attention = self.calculate_flops_attention(batch_size, sequence_length, hidden_dim)
-        flops_feedforward = self.calculate_flops_feedforward(batch_size, sequence_length, hidden_dim, ff_dim)
-        flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
+        # Calculate FLOPs (Prefill depends on input length)
+        flops_attention = self.calculate_flops_attention(batch_size, current_input_length, hidden_dim)
+        flops_feedforward = self.calculate_flops_feedforward(batch_size, current_input_length, hidden_dim, ff_dim)
+        flops_prefill = self.calculate_flops_prefill(batch_size, current_input_length, hidden_dim, ff_dim, num_layers)
         flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
         
         # Default overhead factors for VRAM calculations
@@ -301,14 +306,15 @@ class AdvancedCalculator:
         activations_overhead = 1.1
         system_overhead = 1.05
         
-        # Calculate VRAM requirements
+        # Calculate VRAM requirements (Pass both lengths now)
         vram_dict = self.calculate_total_vram(
             batch_size=batch_size,
-            sequence_length=sequence_length,
+            input_sequence_length=current_input_length,
             hidden_dimensions=hidden_dim,
             feedforward_dimensions=ff_dim,
             num_layers=num_layers,
             vocab_size=vocab_size,
+            output_sequence_length=output_sequence_length,
             precision=precision,
             weights_overhead=weights_overhead,
             kv_cache_overhead=kv_cache_overhead,
@@ -316,11 +322,15 @@ class AdvancedCalculator:
             system_overhead=system_overhead
         )
         
-        # Calculate performance metrics
+        # Calculate performance metrics (Latency depends on input/output lengths)
         tokens_per_second = self.estimate_inference_throughput(flops_per_token, gpu_tflops, efficiency_factor)
         prefill_latency = self.calculate_prefill_latency(flops_prefill, gpu_tflops, efficiency_factor)
         token_latency = self.calculate_token_latency(flops_per_token, gpu_tflops, efficiency_factor)
         time_for_1000_tokens = token_latency * 1000
+        
+        # Calculate TTFT and Total Request Time
+        time_to_first_token = prefill_latency
+        total_request_time = prefill_latency + (output_sequence_length * token_latency)
         
         # Check if model fits on GPU
         total_vram_required = vram_dict["total"]
@@ -350,7 +360,8 @@ class AdvancedCalculator:
                 "supported_precisions": gpu_config.get("supported_precisions", [])
             },
             "analysis_parameters": {
-                "sequence_length": sequence_length,
+                "input_sequence_length": current_input_length,
+                "output_sequence_length": output_sequence_length,
                 "batch_size": batch_size,
                 "precision": precision,
                 "efficiency_factor": efficiency_factor
@@ -366,6 +377,8 @@ class AdvancedCalculator:
                 "tokens_per_second": tokens_per_second,
                 "prefill_latency": prefill_latency,
                 "token_latency": token_latency,
+                "time_to_first_token": time_to_first_token,
+                "total_request_time": total_request_time,
                 "time_for_1000_tokens": time_for_1000_tokens
             },
             "compatibility": {
@@ -384,17 +397,19 @@ class AdvancedCalculator:
     
     def analyze_model_by_name(self, 
                              model_name: str, 
-                             sequence_length: Optional[int] = None,
+                             input_sequence_length: Optional[int] = None,
+                             output_sequence_length: int = 128,
                              batch_size: int = 1,
                              precision: Literal["fp16", "fp32", "bf16"] = "fp16",
-                             gpu_tflops: float = 312.0,  # A100 defaults
+                             gpu_tflops: float = 312.0,
                              efficiency_factor: float = 0.3) -> Dict[str, Any]:
         """
-        Analyze a predefined model.
+        Analyze a predefined model (assuming generic GPU TFLOPS).
         
         Args:
             model_name: Name of the predefined model
-            sequence_length: Custom sequence length (uses model default if not specified)
+            input_sequence_length: Input sequence length (uses model default if not specified)
+            output_sequence_length: Desired output sequence length in tokens
             batch_size: Number of sequences processed in parallel
             precision: Data precision for inference
             gpu_tflops: GPU throughput in TFLOPS
@@ -424,17 +439,20 @@ class AdvancedCalculator:
         vocab_size = model_config["vocab_size"]
         
         # Use model-specific sequence length if not specified
-        if sequence_length is None:
-            sequence_length = model_config.get("max_sequence_length", 2048)
+        current_input_length = input_sequence_length
+        if current_input_length is None:
+            current_input_length = model_config.get("max_sequence_length", 2048)
         
-        # Validate sequence length is positive
-        if sequence_length <= 0:
-            raise ValueError(f"Sequence length must be positive, got {sequence_length}")
+        # Validate sequence lengths are positive
+        if current_input_length <= 0:
+            raise ValueError(f"Input sequence length must be positive, got {current_input_length}")
+        if output_sequence_length <= 0:
+             raise ValueError(f"Output sequence length must be positive, got {output_sequence_length}")
             
-        # Calculate FLOPs
-        flops_attention = self.calculate_flops_attention(batch_size, sequence_length, hidden_dim)
-        flops_feedforward = self.calculate_flops_feedforward(batch_size, sequence_length, hidden_dim, ff_dim)
-        flops_prefill = self.calculate_flops_prefill(batch_size, sequence_length, hidden_dim, ff_dim, num_layers)
+        # Calculate FLOPs (Prefill depends on input length)
+        flops_attention = self.calculate_flops_attention(batch_size, current_input_length, hidden_dim)
+        flops_feedforward = self.calculate_flops_feedforward(batch_size, current_input_length, hidden_dim, ff_dim)
+        flops_prefill = self.calculate_flops_prefill(batch_size, current_input_length, hidden_dim, ff_dim, num_layers)
         flops_per_token = self.calculate_flops_per_token(batch_size, hidden_dim, ff_dim, num_layers)
         
         # Default overhead factors for VRAM calculations
@@ -443,14 +461,15 @@ class AdvancedCalculator:
         activations_overhead = 1.1
         system_overhead = 1.05
         
-        # Calculate VRAM requirements
+        # Calculate VRAM requirements (Pass both lengths now)
         vram_dict = self.calculate_total_vram(
             batch_size=batch_size,
-            sequence_length=sequence_length,
+            input_sequence_length=current_input_length,
             hidden_dimensions=hidden_dim,
             feedforward_dimensions=ff_dim,
             num_layers=num_layers,
             vocab_size=vocab_size,
+            output_sequence_length=output_sequence_length,
             precision=precision,
             weights_overhead=weights_overhead,
             kv_cache_overhead=kv_cache_overhead,
@@ -458,13 +477,17 @@ class AdvancedCalculator:
             system_overhead=system_overhead
         )
         
-        # Calculate performance metrics
+        # Calculate performance metrics (Latency depends on input/output lengths)
         tokens_per_second = self.estimate_inference_throughput(flops_per_token, gpu_tflops, efficiency_factor)
         prefill_latency = self.calculate_prefill_latency(flops_prefill, gpu_tflops, efficiency_factor)
         token_latency = self.calculate_token_latency(flops_per_token, gpu_tflops, efficiency_factor)
         time_for_1000_tokens = token_latency * 1000
         
-        # Calculate throughput on different GPUs
+        # Calculate TTFT and Total Request Time
+        time_to_first_token = prefill_latency
+        total_request_time = prefill_latency + (output_sequence_length * token_latency)
+            
+        # Calculate throughput on different GPUs (optional, might be heavy without specific GPU)
         throughput_by_gpu = self.calculate_throughput_across_gpus(flops_per_token, efficiency_factor)
         
         # Create result dictionary
@@ -480,7 +503,8 @@ class AdvancedCalculator:
                 "description": model_config.get("description", "")
             },
             "analysis_parameters": {
-                "sequence_length": sequence_length,
+                "input_sequence_length": current_input_length,
+                "output_sequence_length": output_sequence_length,
                 "batch_size": batch_size,
                 "precision": precision,
                 "gpu_tflops": gpu_tflops,
@@ -497,10 +521,12 @@ class AdvancedCalculator:
                 "tokens_per_second": tokens_per_second,
                 "prefill_latency": prefill_latency,
                 "token_latency": token_latency,
+                "time_to_first_token": time_to_first_token,
+                "total_request_time": total_request_time,
                 "time_for_1000_tokens": time_for_1000_tokens,
                 "throughput_by_gpu": throughput_by_gpu
             },
-            "overheads_used": {
+             "overheads_used": {
                 "weights": weights_overhead,
                 "kv_cache": kv_cache_overhead,
                 "activations": activations_overhead,
@@ -542,8 +568,9 @@ class AdvancedCalculator:
         # First calculate total VRAM requirements
         total_vram_result = self.calculate_total_vram(
             batch_size=batch_size,
-            sequence_length=sequence_length,
-            hidden_dimensions=hidden_dimensions, 
+            input_sequence_length=sequence_length,
+            output_sequence_length=0,
+            hidden_dimensions=hidden_dimensions,
             feedforward_dimensions=feedforward_dimensions,
             num_layers=num_layers,
             vocab_size=vocab_size,
@@ -656,22 +683,107 @@ class AdvancedCalculator:
     
     def calculate_total_vram(self,
                        batch_size: int,
-                       sequence_length: int,
+                       input_sequence_length: int,
                        hidden_dimensions: int,
                        feedforward_dimensions: int,
                        num_layers: int,
                        vocab_size: int,
+                       output_sequence_length: int = 0,
                        precision: Literal["fp16", "fp32", "bf16"] = "fp16",
                        weights_overhead: float = 1.05,
                        kv_cache_overhead: float = 1.05,
                        activations_overhead: float = 1.1,
                        system_overhead: float = 1.05) -> Dict[str, float]:
-        """Delegate to VRAMCalculator.calculate_total_vram"""
-        return self._vram.calculate_total_vram(
-            batch_size, sequence_length, hidden_dimensions, feedforward_dimensions,
-            num_layers, vocab_size, precision, weights_overhead,
-            kv_cache_overhead, activations_overhead, system_overhead
+        """
+        Calculate total VRAM required for inference including all components.
+        Uses input_sequence_length for activations and the sum for KV cache peak.
+
+        Args:
+            batch_size: Number of sequences processed in parallel
+            input_sequence_length: Sequence length of the input prompt
+            hidden_dimensions: Hidden size of the model
+            feedforward_dimensions: Feedforward dimensions
+            num_layers: Number of transformer layers
+            vocab_size: Size of the vocabulary
+            output_sequence_length: Number of tokens to generate (defaults to 0)
+            precision: Data precision for inference (defaults to "fp16")
+            weights_overhead: Overhead factor for model weights (defaults to 1.05)
+            kv_cache_overhead: Overhead factor for KV cache (defaults to 1.05)
+            activations_overhead: Overhead factor for activations (defaults to 1.1)
+            system_overhead: Overall system overhead factor (defaults to 1.05)
+
+        Returns:
+            Dictionary with detailed VRAM breakdown.
+        """
+        # Calculate peak sequence length for KV Cache
+        total_sequence_length = input_sequence_length + output_sequence_length
+
+        # Calculate BASE VRAM components
+        model_vram_base = self._vram.calculate_model_vram_base(
+            hidden_dimensions=hidden_dimensions,
+            feedforward_dimensions=feedforward_dimensions,
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            precision=precision
         )
+        # Use TOTAL length for peak KV cache size
+        kv_cache_vram_base = self._vram.calculate_kv_cache_vram_base(
+            batch_size=batch_size,
+            sequence_length=total_sequence_length, # Use sum here
+            hidden_dimensions=hidden_dimensions,
+            num_layers=num_layers,
+            precision=precision
+        )
+        # Use INPUT length for peak activations size
+        activations_vram_base = self._vram.calculate_activations_vram_base(
+            batch_size=batch_size,
+            sequence_length=input_sequence_length, # Use input length here
+            hidden_dimensions=hidden_dimensions,
+            num_layers=num_layers,
+            precision=precision
+        )
+
+        # Calculate WITH OVERHEAD VRAM components
+        model_vram_with_overhead = model_vram_base * weights_overhead
+        kv_cache_vram_with_overhead = kv_cache_vram_base * kv_cache_overhead
+        activations_vram_with_overhead = activations_vram_base * activations_overhead
+
+        # Calculate totals
+        total_vram_base = model_vram_base + kv_cache_vram_base + activations_vram_base
+        component_subtotal_with_overhead = (
+            model_vram_with_overhead + kv_cache_vram_with_overhead + activations_vram_with_overhead
+        )
+        total_vram_system_wide = component_subtotal_with_overhead * system_overhead
+
+        result = {
+            # Base values
+            "weights_base": model_vram_base,
+            "kv_cache_base": kv_cache_vram_base,
+            "activations_base": activations_vram_base,
+            "total_base": total_vram_base,
+
+            # With component overhead
+            "weights_with_overhead": model_vram_with_overhead,
+            "kv_cache_with_overhead": kv_cache_vram_with_overhead,
+            "activations_with_overhead": activations_vram_with_overhead,
+            "component_subtotal": component_subtotal_with_overhead,
+
+            # With system-wide overhead
+            "system_overhead_applied": total_vram_system_wide - component_subtotal_with_overhead,
+            "total": total_vram_system_wide
+        }
+
+        if self._history:
+             self._history.add_entry(
+                f"Total_VRAM_Details:\n"
+                f"  - Input Len={input_sequence_length}, Output Len={output_sequence_length}, Total Len={total_sequence_length}\n"
+                f"  - Base: Model={model_vram_base:.2f}, KV={kv_cache_vram_base:.2f}, Act={activations_vram_base:.2f}, Total={total_vram_base:.2f} GB\n"
+                f"  - +Overhead: Model={model_vram_with_overhead:.2f}, KV={kv_cache_vram_with_overhead:.2f}, Act={activations_vram_with_overhead:.2f}, Subtotal={component_subtotal_with_overhead:.2f} GB\n"
+                f"  - +System Overhead: {result['system_overhead_applied']:.2f} GB\n"
+                f"  - Final Total: {total_vram_system_wide:.2f} GB"
+            )
+
+        return result
     
     # Throughput calculations
     def estimate_inference_throughput(self, 

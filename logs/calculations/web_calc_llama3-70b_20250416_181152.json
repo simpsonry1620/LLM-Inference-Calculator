@@ -1,0 +1,83 @@
+{
+  "timestamp": "2025-04-16T18:11:52.764678",
+  "input_parameters": {
+    "calculation_type": "model",
+    "model_name": "llama3-70b",
+    "hidden_dim": 8192,
+    "ff_dim": 28672,
+    "num_layers": 80,
+    "vocab_size": 128000,
+    "seq_length": 2048,
+    "batch_size": 1,
+    "precision": "fp16",
+    "gpu": "989.0",
+    "efficiency_factor": 0.3
+  },
+  "results": {
+    "model_name": "llama3-70b",
+    "parameters_billions": 70.6,
+    "vram": {
+      "model_base": 111.95803833007812,
+      "kv_cache_base": 5.0,
+      "activations_base": 10.0,
+      "total_base": 126.95803833007812,
+      "model_with_overhead": 117.55594024658204,
+      "kv_cache_with_overhead": 5.25,
+      "activations_with_overhead": 11.0,
+      "total_with_component_overhead": 133.80594024658205,
+      "total_system_wide": 140.49623725891115,
+      "model_per_gpu": 111.95803833007812,
+      "kv_cache_per_gpu": 5.0,
+      "activations_per_gpu": 10.0,
+      "model_per_gpu_with_overhead": 117.55594024658204,
+      "kv_cache_per_gpu_with_overhead": 5.25,
+      "activations_per_gpu_with_overhead": 11.0,
+      "total_base_per_gpu": 126.95803833007812,
+      "total_per_gpu_with_component_overhead": 133.80594024658205
+    },
+    "flops": {
+      "attention": 171798691840,
+      "feedforward": 962072674304,
+      "prefill_total": 90709709291520,
+      "per_token": 42950328320
+    },
+    "performance": {
+      "tokens_per_second": 6907.9797898038505,
+      "prefill_latency": 0.3057287134867543,
+      "token_latency": 0.000144760122413212,
+      "time_for_1000_tokens": 0.14476012241321198,
+      "throughput_by_gpu": {
+        "a100-pcie-40gb": 2179.261571707585,
+        "a100-sxm4-40gb": 2179.261571707585,
+        "a100-sxm4-80gb": 2179.261571707585,
+        "b100-80gb": 6984.812729832002,
+        "b200-128gb": 8381.775275798404,
+        "h100-pcie-56gb": 4609.976401689122,
+        "h100-pcie-80gb": 4609.976401689122,
+        "h100-sxm5-80gb": 5280.518423752995,
+        "h200-hbm3e-141gb": 6907.9797898038505,
+        "l40": 1264.2511040995926,
+        "rtx-3080": 416.29483869798736,
+        "rtx-3090": 497.31866636403856,
+        "rtx-4080": 680.3207598856371,
+        "rtx-4090": 1152.4941004222806,
+        "rtx-a5000": 388.35558777865936,
+        "rtx-a6000": 540.624505288997
+      }
+    },
+    "parallelism": {
+      "strategy": "none",
+      "tp_size": 1,
+      "pp_size": 1,
+      "num_gpus": 1,
+      "effective_tflops": 989.0
+    },
+    "overheads_used": {
+      "weights": 1.05,
+      "kv_cache": 1.05,
+      "activations": 1.1,
+      "system": 1.05
+    },
+    "history": []
+  }
+}
