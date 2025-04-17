@@ -17,7 +17,7 @@ Use the following markers to track the status of each step:
 
 **Steps:**
 
-1.  [ ] Ensure `dev` branch is clean and all changes are committed and pushed.
+1.  [*] Ensure `dev` branch is clean and all changes are committed and pushed.
 2.  [ ] Checkout `main` branch.
 3.  [ ] Pull latest `main` from origin.
 4.  [ ] Merge `dev` into `main`.
