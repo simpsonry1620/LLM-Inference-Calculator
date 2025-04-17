@@ -22,6 +22,10 @@ LLM-Inference-Calculator/
 │   ├── project_structure.md   # This document
 │   ├── advanced_calculator_usage.md # AdvancedCalculator class usage documentation
 │   ├── calculator_api_description.md # API endpoint documentation
+│   ├── tasks/                 # Task checklists and templates
+│   │   ├── templates/         # Task templates (e.g., end_of_days_tasks.md)
+│   │   ├── in_progress/       # Active task checklists
+│   │   └── archive/           # Completed task checklists
 │   └── ...                    # Additional documentation
 ├── examples/                  # Example scripts demonstrating usage
 │   ├── advanced_calculator_example.py
@@ -256,6 +260,7 @@ The `templates/` directory contains HTML templates for the web interface:
 
 - `README.md`: Main project documentation with overview and setup instructions
 - `README_WEB_GUI.md`: Detailed documentation on using the web interface
-- `docs/`: Additional documentation on various aspects of the project
+- `docs/`: Additional documentation on various aspects of the project, including task management templates and checklists located in `docs/tasks/`.
+  - **End-of-Day Workflow:** A daily checklist template (`docs/tasks/templates/end_of_days_tasks.md`) guides the end-of-day process. AI assistants should copy this template to `docs/tasks/in_progress/`, rename it with the current date (YYYY-MM-DD), complete the steps, and then move the completed file to `docs/tasks/archive/`.
 - `docs/advanced_calculator_usage.md`: Comprehensive documentation for using the AdvancedCalculator class directly in Python code
 - `docs/calculator_api_description.md`: API documentation for the calculator endpoints. **Important**: Developers should refer to this document when making API calls to ensure correct parameter usage and response handling.

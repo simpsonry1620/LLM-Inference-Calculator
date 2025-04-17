@@ -27,7 +27,8 @@ model_vram = calculator.calculate_model_vram(
     feedforward_dimensions=16384, # Integer: Feedforward dimension size
     num_layers=32,               # Integer: Number of transformer layers
     vocab_size=128000,           # Integer: Vocabulary size
-    precision="fp16"             # String: Precision format ("fp16", "fp32", "bf16")
+    precision="fp16",             # String: Precision format ("fp16", "fp32", "bf16")
+    overhead_factor=1.0          # Float: Overhead factor for weights (optional, default: 1.0)
 )
 ```
 
@@ -43,7 +44,8 @@ kv_cache_vram = calculator.calculate_kv_cache_vram(
     num_layers=32,              # Integer: Number of transformer layers
     sequence_length=2048,       # Integer: Maximum sequence length
     batch_size=1,               # Integer: Batch size
-    precision="fp16"            # String: Precision format ("fp16", "fp32", "bf16")
+    precision="fp16",            # String: Precision format ("fp16", "fp32", "bf16")
+    overhead_factor=1.0          # Float: Overhead factor for KV cache (optional, default: 1.0)
 )
 ```
 
@@ -56,10 +58,11 @@ Calculate VRAM requirements for activations.
 ```python
 activations_vram = calculator.calculate_activations_vram(
     hidden_dimensions=4096,     # Integer: Hidden dimension size
-    feedforward_dimensions=16384, # Integer: Feedforward dimension size
+    num_layers=32,              # Integer: Number of transformer layers
     sequence_length=2048,       # Integer: Maximum sequence length
     batch_size=1,               # Integer: Batch size
-    precision="fp16"            # String: Precision format ("fp16", "fp32", "bf16")
+    precision="fp16",            # String: Precision format ("fp16", "fp32", "bf16")
+    overhead_factor=1.1          # Float: Overhead factor for activations (optional, default: 1.1)
 )
 ```
 
@@ -95,6 +98,7 @@ total_vram = calculator.calculate_total_vram(
     "kv_cache_with_overhead": float, # VRAM for KV cache with overhead in GB
     "activations_with_overhead": float, # VRAM for activations with overhead in GB
     "component_subtotal": float,    # Total VRAM with component overheads in GB
+    "system_overhead_applied": float, # Additional VRAM from system overhead in GB
     "total": float                  # Total VRAM with system-wide overhead in GB
 }
 ```
@@ -209,7 +213,8 @@ Analyze a model using a predefined model name.
 ```python
 analysis = calculator.analyze_model_by_name(
     model_name="llama2-7b",     # String: Predefined model name
-    sequence_length=2048,       # Integer: Maximum sequence length (optional, uses model default if None)
+    input_sequence_length=2048, # Integer: Input sequence length (optional, uses model default if None)
+    output_sequence_length=128, # Integer: Output sequence length (optional, default: 128)
     batch_size=1,               # Integer: Batch size (optional, default: 1)
     precision="fp16",           # String: Precision format ("fp16", "fp32", "bf16", optional, default: "fp16")
     gpu_tflops=312.0,           # Float: GPU performance in TFLOPS (optional, default: 312.0, A100-like)
@@ -228,10 +233,12 @@ analysis = calculator.analyze_model_by_name(
         "feedforward_dimensions": int,
         "num_layers": int,
         "vocab_size": int,
+        "max_sequence_length": int, # Added if available in model config
         "description": str
     },
     "analysis_parameters": { # Parameters used for this analysis
-        "sequence_length": int,
+        "input_sequence_length": int,
+        "output_sequence_length": int,
         "batch_size": int,
         "precision": str,
         "gpu_tflops": float,
@@ -246,7 +253,12 @@ analysis = calculator.analyze_model_by_name(
     "vram": {  # VRAM requirements (matches calculate_total_vram output)
         "weights_base": float,
         "kv_cache_base": float,
-        # ... other keys from calculate_total_vram ...
+        "activations_base": float,
+        "weights_with_overhead": float,
+        "kv_cache_with_overhead": float,
+        "activations_with_overhead": float,
+        "component_subtotal": float,
+        "system_overhead_applied": float,
         "total": float 
     },
     "performance": {  # Performance metrics
@@ -254,6 +266,8 @@ analysis = calculator.analyze_model_by_name(
         "prefill_latency": float,
         "token_latency": float,
         "time_for_1000_tokens": float,
+        "time_to_first_token": float,
+        "total_request_time": float,
         "throughput_by_gpu": dict # Throughput on various GPUs
     },
     "overheads_used": {  # Overhead factors applied
@@ -273,7 +287,8 @@ Analyze a model on a specific GPU using predefined configurations.
 analysis = calculator.analyze_model_on_gpu(
     model_name="llama2-7b",     # String: Predefined model name
     gpu_name="a100-80gb",       # String: GPU name from predefined configurations
-    sequence_length=2048,       # Integer: Maximum sequence length (optional, uses model default if None)
+    input_sequence_length=2048, # Integer: Input sequence length (optional, uses model default if None)
+    output_sequence_length=128, # Integer: Output sequence length (optional, default: 128)
     batch_size=1,               # Integer: Batch size (optional, default: 1)
     precision="fp16",           # String: Precision format ("fp16", "fp32", "bf16", "int8", "int4", optional, default: "fp16")
     efficiency_factor=0.3       # Float: Efficiency factor (0.0-1.0, optional, default: 0.3)
@@ -289,12 +304,13 @@ analysis = calculator.analyze_model_on_gpu(
         "family": str,
         "vram_gb": float,
         "tflops": float,        # TFLOPS for the specified precision
+        "interconnect_bandwidth_gb_per_sec": float, # Added
         "supported_precisions": list[str]
     },
     "analysis_parameters": { ... }, # Same as analyze_model_by_name
     "flops": { ... },           # Same as analyze_model_by_name
     "vram": { ... },           # Same as analyze_model_by_name
-    "performance": { ... },     # Same as analyze_model_by_name
+    "performance": { ... },     # Same as analyze_model_by_name, including TTFT and Total Request Time
     "compatibility": {          # Information about fitting the model on the GPU
         "fits_on_gpu": bool,
         "vram_utilization_pct": float,
@@ -312,8 +328,9 @@ Analyze how a model would scale across multiple GPUs.
 ```python
 scaling_result = calculator.determine_model_scaling(
     gpu_vram_gb=80.0,           # Float: VRAM capacity of GPU in GB
+    interconnect_bandwidth_gb_per_sec=50.0, # Float: Interconnect bandwidth in GB/s (e.g., NVLink)
     batch_size=1,               # Integer: Batch size
-    sequence_length=2048,       # Integer: Maximum sequence length
+    sequence_length=2048,       # Integer: Maximum sequence length (used for calculations)
     hidden_dimensions=4096,     # Integer: Hidden dimension size
     feedforward_dimensions=16384, # Integer: Feedforward dimension size
     num_layers=32,              # Integer: Number of transformer layers
@@ -333,10 +350,10 @@ scaling_result = calculator.determine_model_scaling(
     "scaling_details": {              # Detailed scaling information
         "vram_per_gpu_tensor_parallel_gb": float, # Estimated VRAM per GPU with Tensor Parallel
         "vram_per_gpu_pipeline_parallel_gb": float, # Estimated VRAM per GPU with Pipeline Parallel (if applicable)
-        "model_weights_gb": float,          # VRAM needed for model weights
-        "kv_cache_gb": float,               # VRAM needed for KV cache
-        "activation_memory_gb": float,      # VRAM needed for activations
-        "other_memory_gb": float            # VRAM needed for other components (gradients, optimizer state - often 0 for inference)
+        "can_use_tensor_parallel": bool,      # Whether Tensor Parallel is feasible
+        "can_use_pipeline_parallel": bool,    # Whether Pipeline Parallel is feasible
+        "tensor_parallel_limitations": str,   # Limitations for Tensor Parallel (if any)
+        "pipeline_parallel_limitations": str  # Limitations for Pipeline Parallel (if any)
     }
 }
 ```
@@ -435,13 +452,13 @@ try:
     analysis = calc.analyze_model_on_gpu(
         model_name="llama2-7b",
         gpu_name="a100-80gb",
-        sequence_length=4096,
+        input_sequence_length=4096, # Use input_sequence_length
         batch_size=1,
         precision="fp16"
     )
     
     # Extract key metrics
-    total_vram = analysis["vram"]["total_system_wide"]
+    total_vram = analysis["vram"]["total"] # Use 'total' key
     tokens_per_second = analysis["performance"]["tokens_per_second"]
     
     print(f"Model requires {total_vram:.2f} GB of VRAM")
@@ -453,8 +470,9 @@ try:
         model_info = analysis["model_info"]
         scaling = calc.determine_model_scaling(
             gpu_vram_gb=gpu_vram,
+            interconnect_bandwidth_gb_per_sec=analysis["gpu_info"]["interconnect_bandwidth_gb_per_sec"], # Add interconnect bandwidth
             batch_size=analysis["analysis_parameters"]["batch_size"],
-            sequence_length=analysis["analysis_parameters"]["sequence_length"],
+            sequence_length=analysis["analysis_parameters"]["input_sequence_length"], # Pass input seq length
             hidden_dimensions=model_info["hidden_dimensions"],
             feedforward_dimensions=model_info["feedforward_dimensions"],
             num_layers=model_info["num_layers"],
