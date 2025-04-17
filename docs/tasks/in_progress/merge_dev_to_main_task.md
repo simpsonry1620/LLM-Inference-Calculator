@@ -22,4 +22,4 @@ Use the following markers to track the status of each step:
 3.  [*] Pull latest `main` from origin.
 4.  [*] Merge `dev` into `main`.
 5.  [*] Resolve any merge conflicts.
-6.  [ ] Push updated `main` to origin. 
+6.  [*] Push updated `main` to origin. 
