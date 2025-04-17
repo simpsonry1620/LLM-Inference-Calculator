@@ -262,6 +262,12 @@ class AdvancedCalculator:
         if precision not in gpu_config.get("supported_precisions", ["fp32"]):
             raise ValueError(f"Precision '{precision}' not supported by {gpu_name}")
             
+        # Get GPU interconnect bandwidth
+        interconnect_bandwidth = gpu_config.get("interconnect_bandwidth_gb_per_sec", 0.0)
+        if interconnect_bandwidth == 0.0:
+            # Add a warning or default if bandwidth info is missing? For now, raise error.
+             raise ValueError(f"Interconnect bandwidth information missing for {gpu_name}")
+
         # Extract model parameters
         hidden_dim = model_config["hidden_dimensions"]
         ff_dim = model_config["feedforward_dimensions"]
@@ -357,6 +363,7 @@ class AdvancedCalculator:
                 "family": gpu_config.get("family", "Unknown"),
                 "vram_gb": gpu_vram,
                 "tflops": gpu_tflops,
+                "interconnect_bandwidth_gb_per_sec": interconnect_bandwidth,
                 "supported_precisions": gpu_config.get("supported_precisions", [])
             },
             "analysis_parameters": {
@@ -536,6 +543,7 @@ class AdvancedCalculator:
     
     def determine_model_scaling(self,
                           gpu_vram_gb: float,
+                          interconnect_bandwidth_gb_per_sec: float,
                           batch_size: int,
                           sequence_length: int,
                           hidden_dimensions: int,
@@ -548,6 +556,7 @@ class AdvancedCalculator:
         
         Args:
             gpu_vram_gb: Available VRAM per GPU in GB
+            interconnect_bandwidth_gb_per_sec: Interconnect bandwidth per second in GB
             batch_size: Number of sequences processed in parallel
             sequence_length: Sequence length for inference
             hidden_dimensions: Hidden size of the model
@@ -592,6 +601,7 @@ class AdvancedCalculator:
         # Delegate to VRAM calculator's method
         scaling_result = self._vram.determine_model_scaling(
             gpu_vram_gb=gpu_vram_gb,
+            interconnect_bandwidth_gb_per_sec=interconnect_bandwidth_gb_per_sec,
             total_vram_required_gb=total_vram_required_gb,
             model_params=model_params,
             num_layers=num_layers,

@@ -268,11 +268,12 @@ class VRAMCalculator:
 
     def determine_model_scaling(self,
                                gpu_vram_gb: float,
+                               interconnect_bandwidth_gb_per_sec: float,
                                total_vram_required_gb: float,
                                model_params: Dict[str, Any],
                                num_layers: int,
                                hidden_dimensions: int,
-                               communication_overhead: float = 0.1) -> Dict[str, Any]:
+                               ) -> Dict[str, Any]:
         """
         Determine if a model fits on the selected GPU, and if not, how to scale it across multiple GPUs.
         
@@ -284,11 +285,11 @@ class VRAMCalculator:
         
         Args:
             gpu_vram_gb: VRAM capacity of a single GPU in GB
+            interconnect_bandwidth_gb_per_sec: Interconnect bandwidth (e.g., PCIe, NVLink) in GB/s
             total_vram_required_gb: Total VRAM required for the model in GB
             model_params: Dictionary containing model parameters and configurations
             num_layers: Number of transformer layers in the model
             hidden_dimensions: Size of hidden dimensions in the model
-            communication_overhead: Fractional overhead due to communication between GPUs (default: 0.1 or 10%)
             
         Returns:
             Dictionary containing:
@@ -352,10 +353,15 @@ class VRAMCalculator:
             )
             strategy = "tp+pp"
         
-        # Calculate communication overhead based on parallelization strategy
+        # Calculate communication overhead based on parallelization strategy and bandwidth
         communication_overhead_gb = self._calculate_communication_overhead(
-            strategy, tp_degree, pp_degree, hidden_dimensions, num_layers, 
-            total_vram_required_gb, communication_overhead
+            strategy=strategy, 
+            tp_degree=tp_degree, 
+            pp_degree=pp_degree, 
+            hidden_dim=hidden_dimensions, 
+            num_layers=num_layers, 
+            total_vram_gb=total_vram_required_gb, 
+            interconnect_bandwidth_gb_per_sec=interconnect_bandwidth_gb_per_sec
         )
         
         # Calculate VRAM per GPU with parallelization
@@ -363,9 +369,24 @@ class VRAMCalculator:
             total_vram_required_gb, tp_degree, pp_degree, strategy, communication_overhead_gb
         )
         
-        # Calculate efficiency factor - lower with more GPUs due to communication overhead
-        efficiency_factor = 1.0 - (0.05 * (tp_degree + pp_degree - 2))
-        efficiency_factor = max(0.5, efficiency_factor)  # Ensure minimum 50% efficiency
+        # Calculate efficiency factor - lower with more GPUs and lower interconnect bandwidth
+        if tp_degree * pp_degree <= 1:
+            efficiency_factor = 1.0
+        else:
+            # Determine penalty based on bandwidth
+            if interconnect_bandwidth_gb_per_sec >= 600: # High (NVLink >= A100)
+                penalty_per_link = 0.02
+            elif interconnect_bandwidth_gb_per_sec > 64: # Medium (PCIe 5+?)
+                penalty_per_link = 0.05
+            else: # Low (PCIe <= 4)
+                penalty_per_link = 0.10
+
+            # Simple model: penalty increases linearly with number of parallel links (TP+PP-2)
+            # Example: TP=2, PP=2 -> 4 GPUs, (2+2-2) = 2 effective links penalized
+            # Example: TP=4, PP=1 -> 4 GPUs, (4+1-2) = 3 effective links penalized
+            # Example: TP=1, PP=4 -> 4 GPUs, (1+4-2) = 3 effective links penalized
+            total_penalty = penalty_per_link * (tp_degree + pp_degree - 2)
+            efficiency_factor = max(0.3, 1.0 - total_penalty) # Ensure minimum 30% efficiency
         
         num_gpus_required = tp_degree * pp_degree
         
@@ -463,7 +484,7 @@ class VRAMCalculator:
                                         hidden_dim: int,
                                         num_layers: int,
                                         total_vram_gb: float,
-                                        overhead_factor: float) -> float:
+                                        interconnect_bandwidth_gb_per_sec: float) -> float:
         """
         Estimate communication overhead for different parallelization strategies.
         
@@ -474,7 +495,7 @@ class VRAMCalculator:
             hidden_dim: Model hidden dimension
             num_layers: Number of layers
             total_vram_gb: Total VRAM required without parallelization
-            overhead_factor: Base communication overhead factor
+            interconnect_bandwidth_gb_per_sec: Interconnect bandwidth in GB/s
             
         Returns:
             Estimated communication overhead in GB
@@ -482,7 +503,15 @@ class VRAMCalculator:
         if strategy == "single":
             return 0.0
             
-        base_overhead = total_vram_gb * overhead_factor
+        # Determine base overhead factor based on bandwidth
+        if interconnect_bandwidth_gb_per_sec >= 600: # High (NVLink >= A100)
+            base_overhead_percentage = 0.05
+        elif interconnect_bandwidth_gb_per_sec > 64: # Medium (PCIe 5+?)
+            base_overhead_percentage = 0.10
+        else: # Low (PCIe <= 4)
+            base_overhead_percentage = 0.15
+
+        base_overhead = total_vram_gb * base_overhead_percentage
         
         if strategy == "tp":
             # TP overhead scales with tensor parallelism degree

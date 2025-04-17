@@ -1,0 +1,52 @@
+[
+    {
+        "case": {
+            "model": "llama3.1-8b",
+            "gpu": "a10g",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": null,
+            "bench_gpus_for_10": null
+        },
+        "reason": "Benchmark data marked N/A"
+    },
+    {
+        "case": {
+            "model": "llama3.1-70b",
+            "gpu": "a100-sxm4-80gb",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": null,
+            "bench_gpus_for_10": null
+        },
+        "reason": "Benchmark data marked N/A"
+    },
+    {
+        "case": {
+            "model": "llama3.1-70b",
+            "gpu": "l40s",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": null,
+            "bench_gpus_for_10": null
+        },
+        "reason": "Benchmark data marked N/A"
+    },
+    {
+        "case": {
+            "model": "llama3.1-70b",
+            "gpu": "a10g",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": null,
+            "bench_gpus_for_10": null
+        },
+        "reason": "Benchmark data marked N/A"
+    },
+    {
+        "case": {
+            "model": "llama3.1-70b",
+            "gpu": "a10g",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": null,
+            "bench_gpus_for_10": null
+        },
+        "reason": "Benchmark data marked N/A"
+    }
+]

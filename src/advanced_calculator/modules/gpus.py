@@ -24,7 +24,7 @@ class GPUConfig(TypedDict, total=False):
     launch_year: int
     description: str
     pcie_gen: int
-    pcie_bandwidth_gb_per_sec: float
+    interconnect_bandwidth_gb_per_sec: float
     compute_capability: str
     supported_precisions: List[str]
 
@@ -49,7 +49,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "Consumer flagship GPU of the Ampere generation",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -70,7 +70,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "High-end consumer GPU of the Ampere generation",
         "pcie_gen": 4, 
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -93,7 +93,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2022,
         "description": "Flagship consumer GPU of the Ada Lovelace generation",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -114,7 +114,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2022,
         "description": "High-end consumer GPU of the Ada Lovelace generation",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -137,7 +137,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "Datacenter GPU with SXM4 form factor",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0, 
+        "interconnect_bandwidth_gb_per_sec": 600.0,
         "compute_capability": "8.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
     },
@@ -158,7 +158,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "Datacenter GPU with PCIe form factor",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
     },
@@ -179,8 +179,29 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "Datacenter GPU with SXM4 form factor and 80GB HBM2e memory",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 600.0,
         "compute_capability": "8.0",
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
+    },
+    "a10g": {
+        "name": "NVIDIA A10G",
+        "family": "Datacenter",
+        "gen": "Ampere",
+        "vram_gb": 24.0,
+        "bandwidth_gb_per_sec": 600.0,
+        "fp32_tflops": 31.5,
+        "fp16_tflops": 125.0,
+        "bf16_tflops": 125.0,
+        "int8_tflops": 250.0,
+        "int4_tflops": 500.0,
+        "tdp_watts": 150,
+        "tensor_cores": True,
+        "max_batch_size": 16,
+        "launch_year": 2021,
+        "description": "Datacenter GPU for mainstream AI and graphics (Ampere)",
+        "pcie_gen": 4,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
+        "compute_capability": "8.6",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "int8", "int4"]
     },
     
@@ -191,18 +212,18 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "gen": "Hopper",
         "vram_gb": 80.0,
         "bandwidth_gb_per_sec": 3350.0,
-        "fp32_tflops": 51.0,
-        "fp16_tflops": 756.0,
-        "bf16_tflops": 756.0,
-        "int8_tflops": 1513.0,
-        "int4_tflops": 3026.0,
+        "fp32_tflops": 66.9,
+        "fp16_tflops": 989.5,
+        "bf16_tflops": 989.5,
+        "int8_tflops": 1979.0,
+        "int4_tflops": 3958.0,
         "tdp_watts": 700,
         "tensor_cores": True,
         "max_batch_size": 64,
         "launch_year": 2022,
         "description": "Flagship datacenter GPU of the Hopper generation with SXM5 form factor",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 900.0,
         "compute_capability": "9.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -223,7 +244,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2022,
         "description": "PCIe version of the H100 datacenter GPU",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 64.0,
         "compute_capability": "9.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -244,7 +265,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2022,
         "description": "PCIe version of the H100 datacenter GPU with 56GB memory",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 64.0,
         "compute_capability": "9.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -267,7 +288,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2024,
         "description": "Flagship datacenter GPU of the Blackwell generation",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 1800.0,
         "compute_capability": "10.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -288,7 +309,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2024,
         "description": "Top-tier datacenter GPU of the Blackwell generation with expanded memory",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 1800.0,
         "compute_capability": "10.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -311,7 +332,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2023,
         "description": "Enhanced version of H100 with HBM3e memory for high memory workloads",
         "pcie_gen": 5,
-        "pcie_bandwidth_gb_per_sec": 64.0,
+        "interconnect_bandwidth_gb_per_sec": 900.0,
         "compute_capability": "9.0",
         "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     },
@@ -334,7 +355,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2020,
         "description": "Professional workstation GPU with high VRAM for creative and scientific workloads",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -355,7 +376,7 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2021,
         "description": "Professional workstation GPU balanced for creative and AI workloads",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.6",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
     },
@@ -376,9 +397,52 @@ KNOWN_GPUS: Dict[str, GPUConfig] = {
         "launch_year": 2022,
         "description": "Data center GPU optimized for graphics and AI inference",
         "pcie_gen": 4,
-        "pcie_bandwidth_gb_per_sec": 32.0,
+        "interconnect_bandwidth_gb_per_sec": 32.0,
         "compute_capability": "8.9",
         "supported_precisions": ["fp32", "fp16", "bf16", "int8", "int4"]
+    },
+    "l40s": {
+        "name": "NVIDIA L40S",
+        "family": "Datacenter",
+        "gen": "Ada Lovelace",
+        "vram_gb": 48.0,
+        "bandwidth_gb_per_sec": 864.0,
+        "fp32_tflops": 91.6,
+        "fp16_tflops": 366.0,
+        "bf16_tflops": 366.0,
+        "int8_tflops": 733.0,
+        "int4_tflops": 733.0,
+        "fp8_tflops": 733.0,
+        "tdp_watts": 350,
+        "tensor_cores": True,
+        "max_batch_size": 40,
+        "launch_year": 2022,
+        "description": "Powerful universal GPU for AI and graphics, Ada Lovelace architecture",
+        "pcie_gen": 4,
+        "interconnect_bandwidth_gb_per_sec": 64.0,
+        "compute_capability": "8.9",
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
+    },
+    "b100-sxm6": {
+        "name": "NVIDIA B100 SXM6",
+        "family": "Datacenter",
+        "gen": "Blackwell",
+        "vram_gb": 80.0,
+        "bandwidth_gb_per_sec": 4500.0,
+        "fp32_tflops": 60.0,
+        "fp16_tflops": 1000.0,
+        "bf16_tflops": 1000.0,
+        "int8_tflops": 2000.0,
+        "int4_tflops": 4000.0,
+        "tdp_watts": 700,
+        "tensor_cores": True,
+        "max_batch_size": 80,
+        "launch_year": 2024,
+        "description": "Flagship datacenter GPU of the Blackwell generation with SXM6 form factor",
+        "pcie_gen": 5,
+        "interconnect_bandwidth_gb_per_sec": 1800.0,
+        "compute_capability": "10.0",
+        "supported_precisions": ["fp32", "tf32", "fp16", "bf16", "fp8", "int8", "int4"]
     }
 }
 

@@ -126,6 +126,30 @@ KNOWN_MODELS: Dict[str, ModelConfig] = {
         "parameter_count": 70.6
     },
     
+    # Llama 3.1 Models (using Llama 3 architecture but with 128k context)
+    "llama3.1-8b": {
+        "name": "Llama 3.1 8B",
+        "family": "Llama 3.1",
+        "hidden_dimensions": 4096,
+        "feedforward_dimensions": 14336,
+        "num_layers": 32,
+        "vocab_size": 128256, # Llama 3 vocab size
+        "default_seq_length": 131072, # 128k context window
+        "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)",
+        "parameter_count": 8.0 # Assuming same params as Llama 3 8B
+    },
+    "llama3.1-70b": {
+        "name": "Llama 3.1 70B",
+        "family": "Llama 3.1",
+        "hidden_dimensions": 8192,
+        "feedforward_dimensions": 28672,
+        "num_layers": 80,
+        "vocab_size": 128256, # Llama 3 vocab size
+        "default_seq_length": 131072, # 128k context window
+        "description": "Meta's Llama 3.1 70B model (Llama 3 arch, 128k context)",
+        "parameter_count": 70.6 # Assuming same params as Llama 3 70B
+    },
+    
     # Mistral Models
     "mistral-7b": {
         "name": "Mistral 7B",

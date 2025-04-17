@@ -1,0 +1,977 @@
+[
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "h100-sxm5-80gb",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": 4.32,
+            "bench_gpus_for_10": 2.32
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "h100-sxm5-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 989.5,
+                "interconnect_bandwidth_gb_per_sec": 900.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 69113.66738690721,
+                "prefill_latency": 0.08338095496041772,
+                "token_latency": 1.4468918201111672e-05,
+                "time_to_first_token": 0.08338095496041772,
+                "total_request_time": 0.09061541406097356,
+                "time_for_1000_tokens": 0.014468918201111671
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 27.259838533401492,
+                "headroom_gb": 58.1921291732788,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "a100-sxm4-80gb",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": 0.13,
+            "bench_gpus_for_10": 76.8
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "a100-sxm4-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 312.0,
+                "interconnect_bandwidth_gb_per_sec": 600.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 21792.28319829717,
+                "prefill_latency": 0.2644405606837607,
+                "token_latency": 4.588780307692308e-05,
+                "time_to_first_token": 0.2644405606837607,
+                "total_request_time": 0.28738446222222225,
+                "time_for_1000_tokens": 0.04588780307692308
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 27.259838533401492,
+                "headroom_gb": 58.1921291732788,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "l40s",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": 0.077,
+            "bench_gpus_for_10": 129.9
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "l40s",
+                "family": "Datacenter",
+                "vram_gb": 48.0,
+                "tflops": 366.0,
+                "interconnect_bandwidth_gb_per_sec": 64.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 25564.024521079376,
+                "prefill_latency": 0.2254247402550091,
+                "token_latency": 3.911747147540984e-05,
+                "time_to_first_token": 0.2254247402550091,
+                "total_request_time": 0.24498347599271403,
+                "time_for_1000_tokens": 0.03911747147540984
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 45.43306422233582,
+                "headroom_gb": 26.192129173278804,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "h100-sxm5-80gb",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 5.41,
+            "bench_gpus_for_10": 1.85
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "h100-sxm5-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 989.5,
+                "interconnect_bandwidth_gb_per_sec": 900.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 69113.66738690721,
+                "prefill_latency": 0.08338095496041772,
+                "token_latency": 1.4468918201111672e-05,
+                "time_to_first_token": 0.08338095496041772,
+                "total_request_time": 0.09061541406097356,
+                "time_for_1000_tokens": 0.014468918201111671
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 27.259838533401492,
+                "headroom_gb": 58.1921291732788,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "a100-sxm4-80gb",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 1.33,
+            "bench_gpus_for_10": 7.49
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "a100-sxm4-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 312.0,
+                "interconnect_bandwidth_gb_per_sec": 600.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 21792.28319829717,
+                "prefill_latency": 0.2644405606837607,
+                "token_latency": 4.588780307692308e-05,
+                "time_to_first_token": 0.2644405606837607,
+                "total_request_time": 0.28738446222222225,
+                "time_for_1000_tokens": 0.04588780307692308
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 27.259838533401492,
+                "headroom_gb": 58.1921291732788,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "l40s",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 0.67,
+            "bench_gpus_for_10": 15.0
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "l40s",
+                "family": "Datacenter",
+                "vram_gb": 48.0,
+                "tflops": 366.0,
+                "interconnect_bandwidth_gb_per_sec": 64.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 25564.024521079376,
+                "prefill_latency": 0.2254247402550091,
+                "token_latency": 3.911747147540984e-05,
+                "time_to_first_token": 0.2254247402550091,
+                "total_request_time": 0.24498347599271403,
+                "time_for_1000_tokens": 0.03911747147540984
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 45.43306422233582,
+                "headroom_gb": 26.192129173278804,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-8b",
+            "gpu": "a10g",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 0.33,
+            "bench_gpus_for_10": 35.45
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-8b",
+                "family": "Llama 3.1",
+                "parameters_b": 8.0,
+                "hidden_dimensions": 4096,
+                "feedforward_dimensions": 14336,
+                "num_layers": 32,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 8B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "a10g",
+                "family": "Datacenter",
+                "vram_gb": 24.0,
+                "tflops": 125.0,
+                "interconnect_bandwidth_gb_per_sec": 32.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 186286080000,
+                "feedforward": 587202560000,
+                "prefill_total": 24751636480000,
+                "per_token": 4295098368
+            },
+            "vram": {
+                "weights_base": 11.979507446289062,
+                "kv_cache_base": 2.685546875,
+                "activations_base": 4.8828125,
+                "total_base": 19.547866821289062,
+                "weights_with_overhead": 12.578482818603517,
+                "kv_cache_with_overhead": 2.81982421875,
+                "activations_with_overhead": 5.37109375,
+                "component_subtotal": 20.76940078735352,
+                "system_overhead_applied": 1.0384700393676773,
+                "total": 21.807870826721196
+            },
+            "performance": {
+                "tokens_per_second": 8730.88269162547,
+                "prefill_latency": 0.6600436394666667,
+                "token_latency": 0.00011453595648,
+                "time_to_first_token": 0.6600436394666667,
+                "total_request_time": 0.7173116177066666,
+                "time_for_1000_tokens": 0.11453595647999999
+            },
+            "compatibility": {
+                "fits_on_gpu": true,
+                "vram_utilization_pct": 90.86612844467165,
+                "headroom_gb": 2.192129173278804,
+                "minimum_required_vram_gb": 21.807870826721196
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-70b",
+            "gpu": "h100-sxm5-80gb",
+            "ttft_budget_s": 0.5,
+            "bench_req_s_gpu": 0.11,
+            "bench_gpus_for_10": 88.4
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-70b",
+                "family": "Llama 3.1",
+                "parameters_b": 70.6,
+                "hidden_dimensions": 8192,
+                "feedforward_dimensions": 28672,
+                "num_layers": 80,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 70B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "h100-sxm5-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 989.5,
+                "interconnect_bandwidth_gb_per_sec": 900.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 540344320000,
+                "feedforward": 2348810240000,
+                "prefill_total": 231132364800000,
+                "per_token": 42950328320
+            },
+            "vram": {
+                "weights_base": 111.96194458007812,
+                "kv_cache_base": 13.427734375,
+                "activations_base": 24.4140625,
+                "total_base": 149.80374145507812,
+                "weights_with_overhead": 117.56004180908204,
+                "kv_cache_with_overhead": 14.09912109375,
+                "activations_with_overhead": 26.855468750000004,
+                "component_subtotal": 158.51463165283204,
+                "system_overhead_applied": 7.9257315826416175,
+                "total": 166.44036323547365
+            },
+            "performance": {
+                "tokens_per_second": 6911.4721961687665,
+                "prefill_latency": 0.7786166912582113,
+                "token_latency": 0.0001446869742967829,
+                "time_to_first_token": 0.7786166912582113,
+                "total_request_time": 0.8509601784066028,
+                "time_for_1000_tokens": 0.1446869742967829
+            },
+            "compatibility": {
+                "fits_on_gpu": false,
+                "vram_utilization_pct": 208.05045404434205,
+                "headroom_gb": 0,
+                "minimum_required_vram_gb": 166.44036323547365
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-70b",
+            "gpu": "h100-sxm5-80gb",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 0.57,
+            "bench_gpus_for_10": 17.6
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-70b",
+                "family": "Llama 3.1",
+                "parameters_b": 70.6,
+                "hidden_dimensions": 8192,
+                "feedforward_dimensions": 28672,
+                "num_layers": 80,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 70B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "h100-sxm5-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 989.5,
+                "interconnect_bandwidth_gb_per_sec": 900.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 540344320000,
+                "feedforward": 2348810240000,
+                "prefill_total": 231132364800000,
+                "per_token": 42950328320
+            },
+            "vram": {
+                "weights_base": 111.96194458007812,
+                "kv_cache_base": 13.427734375,
+                "activations_base": 24.4140625,
+                "total_base": 149.80374145507812,
+                "weights_with_overhead": 117.56004180908204,
+                "kv_cache_with_overhead": 14.09912109375,
+                "activations_with_overhead": 26.855468750000004,
+                "component_subtotal": 158.51463165283204,
+                "system_overhead_applied": 7.9257315826416175,
+                "total": 166.44036323547365
+            },
+            "performance": {
+                "tokens_per_second": 6911.4721961687665,
+                "prefill_latency": 0.7786166912582113,
+                "token_latency": 0.0001446869742967829,
+                "time_to_first_token": 0.7786166912582113,
+                "total_request_time": 0.8509601784066028,
+                "time_for_1000_tokens": 0.1446869742967829
+            },
+            "compatibility": {
+                "fits_on_gpu": false,
+                "vram_utilization_pct": 208.05045404434205,
+                "headroom_gb": 0,
+                "minimum_required_vram_gb": 166.44036323547365
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-70b",
+            "gpu": "a100-sxm4-80gb",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 0.05,
+            "bench_gpus_for_10": 197.5
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-70b",
+                "family": "Llama 3.1",
+                "parameters_b": 70.6,
+                "hidden_dimensions": 8192,
+                "feedforward_dimensions": 28672,
+                "num_layers": 80,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 70B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "a100-sxm4-80gb",
+                "family": "Datacenter",
+                "vram_gb": 80.0,
+                "tflops": 312.0,
+                "interconnect_bandwidth_gb_per_sec": 600.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 540344320000,
+                "feedforward": 2348810240000,
+                "prefill_total": 231132364800000,
+                "per_token": 42950328320
+            },
+            "vram": {
+                "weights_base": 111.96194458007812,
+                "kv_cache_base": 13.427734375,
+                "activations_base": 24.4140625,
+                "total_base": 149.80374145507812,
+                "weights_with_overhead": 117.56004180908204,
+                "kv_cache_with_overhead": 14.09912109375,
+                "activations_with_overhead": 26.855468750000004,
+                "component_subtotal": 158.51463165283204,
+                "system_overhead_applied": 7.9257315826416175,
+                "total": 166.44036323547365
+            },
+            "performance": {
+                "tokens_per_second": 2179.261571707585,
+                "prefill_latency": 2.469362871794872,
+                "token_latency": 0.00045887102905982905,
+                "time_to_first_token": 2.469362871794872,
+                "total_request_time": 2.698798386324787,
+                "time_for_1000_tokens": 0.45887102905982907
+            },
+            "compatibility": {
+                "fits_on_gpu": false,
+                "vram_utilization_pct": 208.05045404434205,
+                "headroom_gb": 0,
+                "minimum_required_vram_gb": 166.44036323547365
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    },
+    {
+        "benchmark_case": {
+            "model": "llama3.1-70b",
+            "gpu": "l40s",
+            "ttft_budget_s": 3.0,
+            "bench_req_s_gpu": 0.0057,
+            "bench_gpus_for_10": 1768.3
+        },
+        "calculator_params": {
+            "input_sequence_length": 5000,
+            "output_sequence_length": 500,
+            "batch_size": 1,
+            "precision": "fp16",
+            "efficiency_factor": 0.3
+        },
+        "calculator_results": {
+            "model_info": {
+                "name": "llama3.1-70b",
+                "family": "Llama 3.1",
+                "parameters_b": 70.6,
+                "hidden_dimensions": 8192,
+                "feedforward_dimensions": 28672,
+                "num_layers": 80,
+                "vocab_size": 128256,
+                "description": "Meta's Llama 3.1 70B model (Llama 3 arch, 128k context)"
+            },
+            "gpu_info": {
+                "name": "l40s",
+                "family": "Datacenter",
+                "vram_gb": 48.0,
+                "tflops": 366.0,
+                "interconnect_bandwidth_gb_per_sec": 64.0,
+                "supported_precisions": [
+                    "fp32",
+                    "tf32",
+                    "fp16",
+                    "bf16",
+                    "fp8",
+                    "int8",
+                    "int4"
+                ]
+            },
+            "analysis_parameters": {
+                "input_sequence_length": 5000,
+                "output_sequence_length": 500,
+                "batch_size": 1,
+                "precision": "fp16",
+                "efficiency_factor": 0.3
+            },
+            "flops": {
+                "attention": 540344320000,
+                "feedforward": 2348810240000,
+                "prefill_total": 231132364800000,
+                "per_token": 42950328320
+            },
+            "vram": {
+                "weights_base": 111.96194458007812,
+                "kv_cache_base": 13.427734375,
+                "activations_base": 24.4140625,
+                "total_base": 149.80374145507812,
+                "weights_with_overhead": 117.56004180908204,
+                "kv_cache_with_overhead": 14.09912109375,
+                "activations_with_overhead": 26.855468750000004,
+                "component_subtotal": 158.51463165283204,
+                "system_overhead_applied": 7.9257315826416175,
+                "total": 166.44036323547365
+            },
+            "performance": {
+                "tokens_per_second": 2556.4414591185127,
+                "prefill_latency": 2.105030644808743,
+                "token_latency": 0.0003911687460837887,
+                "time_to_first_token": 2.105030644808743,
+                "total_request_time": 2.3006150178506375,
+                "time_for_1000_tokens": 0.3911687460837887
+            },
+            "compatibility": {
+                "fits_on_gpu": false,
+                "vram_utilization_pct": 346.7507567405701,
+                "headroom_gb": 0,
+                "minimum_required_vram_gb": 166.44036323547365
+            },
+            "overheads_used": {
+                "weights": 1.05,
+                "kv_cache": 1.05,
+                "activations": 1.1,
+                "system": 1.05
+            }
+        }
+    }
+]

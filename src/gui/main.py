@@ -281,19 +281,26 @@ def calculate_requirements(widgets):
                     status_label.config(text="Status: Determining scaling...")
                     root.update_idletasks()
                     try:
+                        # Fetch interconnect bandwidth for scaling calculation
+                        interconnect_bw = gpu_config.get("interconnect_bandwidth_gb_per_sec", 0.0)
+                        if interconnect_bw == 0.0:
+                             # Should not happen if check in analyze_model_on_gpu works, but good safety
+                             raise ValueError(f"Interconnect bandwidth info missing for {selected_gpu_name}")
+                        
                         # Use the sequence length for the scaling calculation
                         # The method calculates total VRAM internally
                         # Pass combined length for peak VRAM scenario
                         scaling_sequence_length = input_sequence_length + output_sequence_length
                         scaling_info = calculator.determine_model_scaling(
-                            gpu_vram_gb=gpu_vram_gb,
-                            batch_size=batch_size,
-                            sequence_length=scaling_sequence_length,
-                            hidden_dimensions=model_params['hidden_dimensions'],
-                            feedforward_dimensions=model_params['feedforward_dimensions'],
-                            num_layers=model_params['num_layers'],
-                            vocab_size=model_params['vocab_size'],
-                            precision=precision
+                             gpu_vram_gb=gpu_vram_gb,
+                             interconnect_bandwidth_gb_per_sec=interconnect_bw,
+                             batch_size=batch_size,
+                             sequence_length=scaling_sequence_length,
+                             hidden_dimensions=model_params['hidden_dimensions'],
+                             feedforward_dimensions=model_params['feedforward_dimensions'],
+                             num_layers=model_params['num_layers'],
+                             vocab_size=model_params['vocab_size'],
+                             precision=precision
                         )
                         print(f"[DEBUG] Scaling Info Result: {scaling_info}") # DEBUG
                     except Exception as scale_e:

@@ -131,7 +131,7 @@ class ThroughputCalculator:
                                  flops_per_token: int,
                                  gpu_tflops: float,
                                  num_gpus: int = 1,
-                                 parallel_efficiency: float = 0.9,
+                                 interconnect_bandwidth_gb_per_sec: Optional[float] = None,
                                  compute_efficiency: float = 0.3) -> Dict[str, Any]:
         """
         Estimate batch processing throughput for multiple GPUs.
@@ -141,7 +141,7 @@ class ThroughputCalculator:
             flops_per_token: FLOPs required per token
             gpu_tflops: Single GPU throughput in TFLOPS
             num_gpus: Number of GPUs used for inference
-            parallel_efficiency: Efficiency of parallelization (0-1)
+            interconnect_bandwidth_gb_per_sec: Interconnect bandwidth (used if num_gpus > 1)
             compute_efficiency: GPU compute efficiency (0-1)
             
         Returns:
@@ -151,11 +151,10 @@ class ThroughputCalculator:
         validate_positive_integer(flops_per_token, "FLOPs per token")
         validate_positive_number(gpu_tflops, "GPU TFLOPS")
         validate_positive_integer(num_gpus, "Number of GPUs")
-        validate_positive_number(parallel_efficiency, "Parallel efficiency")
         validate_positive_number(compute_efficiency, "Compute efficiency")
         
-        if parallel_efficiency > 1.0 or compute_efficiency > 1.0:
-            raise ValueError("Efficiency values must be <= 1.0")
+        if compute_efficiency > 1.0:
+            raise ValueError("Compute efficiency value must be <= 1.0")
         
         # Calculate single GPU throughput
         single_gpu_tokens_per_second = self.estimate_inference_throughput(
@@ -164,10 +163,30 @@ class ThroughputCalculator:
         
         # Apply parallelization efficiency for multiple GPUs
         if num_gpus > 1:
-            # Simplified scaling model: efficiency decreases with more GPUs
-            multi_gpu_scaling = num_gpus * parallel_efficiency
+            if interconnect_bandwidth_gb_per_sec is None:
+                raise ValueError("Interconnect bandwidth must be provided for multi-GPU throughput estimation.")
+            
+            # Calculate parallel efficiency based on bandwidth and number of GPUs
+            if interconnect_bandwidth_gb_per_sec >= 600: # High (NVLink >= A100)
+                base_efficiency = 0.95
+            elif interconnect_bandwidth_gb_per_sec > 64: # Medium (PCIe 5+?)
+                base_efficiency = 0.85
+            else: # Low (PCIe <= 4)
+                base_efficiency = 0.75
+
+            efficiency_decay_per_gpu = 0.01 # Small efficiency drop per additional GPU
+            calculated_parallel_efficiency = max(0.4, base_efficiency - efficiency_decay_per_gpu * (num_gpus - 1))
+            
+            multi_gpu_scaling = num_gpus * calculated_parallel_efficiency
+            
+            # Log the calculated efficiency
+            if self._history_callback:
+                self._history_callback(
+                    f"  - Calculated parallel efficiency for {num_gpus} GPUs with {interconnect_bandwidth_gb_per_sec} GB/s BW: {calculated_parallel_efficiency:.3f}"
+                )
         else:
             multi_gpu_scaling = 1.0
+            calculated_parallel_efficiency = 1.0 # Set for logging consistency
             
         total_tokens_per_second = single_gpu_tokens_per_second * multi_gpu_scaling
         
@@ -185,7 +204,7 @@ class ThroughputCalculator:
         if self._history_callback:
             self._history_callback(
                 f"Batch_Throughput(batch_size={batch_size}, num_gpus={num_gpus}, "
-                f"parallel_efficiency={parallel_efficiency}, compute_efficiency={compute_efficiency}) = "
+                f"interconnect_bw={interconnect_bandwidth_gb_per_sec or 'N/A'} GB/s, calc_parallel_eff={calculated_parallel_efficiency:.3f}, compute_efficiency={compute_efficiency:.2f}) = "
                 f"{batches_per_second:.2f} batches/second, {total_tokens_per_second:.2f} tokens/second"
             )
         
